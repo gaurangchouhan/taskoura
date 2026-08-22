@@ -1,0 +1,21 @@
+# ---------- Frontend (React/Vite) ----------
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ---------- Backend (Spring Boot/Maven) ----------
+backend/target/
+backend/*.class
+backend/.mvn/
+backend/application-local.properties
+backend/application-secret.properties
+
+# ---------- General ----------
+.env
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.iml
