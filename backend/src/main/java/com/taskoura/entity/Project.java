@@ -7,17 +7,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users")
+@Table(name = "projects")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class Project {
 
     @Id
     @GeneratedValue
@@ -25,21 +26,19 @@ public class User {
 
     private String name;
 
-    @Column(unique = true, nullable = false)
-    private String email;
+    private String description;
 
-    private String passwordHash;
+    private String frontendStack;
+    private String backendStack;
+    private String databaseStack;
+    private String testingStack;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
 
-    @Builder.Default
-    private boolean verified = false;
-
-    private String otpCode;
-
-    private LocalDateTime otpExpiresAt;
+    private LocalDate deadline;
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    
 }
