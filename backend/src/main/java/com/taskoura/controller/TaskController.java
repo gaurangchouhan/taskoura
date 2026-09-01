@@ -1,8 +1,10 @@
 package com.taskoura.controller;
 
 import com.taskoura.dto.TaskDtos.*;
+import com.taskoura.dto.TaskStatusLogDtos.TaskStatusLogResponse;
 import com.taskoura.service.TaskService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,8 +35,14 @@ public class TaskController {
     @PatchMapping("/api/tasks/{taskId}/status")
     public ResponseEntity<TaskResponse> updateStatus(
             @PathVariable UUID taskId,
-            @RequestBody UpdateTaskStatusRequest request
+            @RequestBody UpdateTaskStatusRequest request,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(taskService.updateStatus(taskId, request));
+        return ResponseEntity.ok(taskService.updateStatus(taskId, request, authentication.getName()));
+    }
+
+    @GetMapping("/api/tasks/{taskId}/status-logs")
+    public ResponseEntity<List<TaskStatusLogResponse>> getStatusLogs(@PathVariable UUID taskId) {
+        return ResponseEntity.ok(taskService.getStatusHistory(taskId));
     }
 }
