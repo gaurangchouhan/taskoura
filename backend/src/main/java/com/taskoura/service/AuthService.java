@@ -1,7 +1,18 @@
 package com.taskoura.service;
 
-import com.taskoura.dto.*;
+import com.taskoura.dto.AuthResponse;
+import com.taskoura.dto.LoginRequest;
+import com.taskoura.dto.MessageResponse;
+import com.taskoura.dto.RegisterRequest;
+import com.taskoura.dto.ResendOtpRequest;
+import com.taskoura.dto.UserResponse;
+import com.taskoura.dto.VerifyOtpRequest;
 import com.taskoura.entity.User;
+import com.taskoura.exception.BadRequestException;
+import com.taskoura.exception.ConflictException;
+import com.taskoura.exception.ForbiddenException;
+import com.taskoura.exception.NotFoundException;
+import com.taskoura.exception.UnauthorizedException;
 import com.taskoura.repository.UserRepository;
 import com.taskoura.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,14 +35,14 @@ public class AuthService {
     }
 
     public MessageResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalStateException("Email already registered");
+        if (userRepository.existsByEmail(request.email())) {
+            throw new ConflictException("Email already registered");
         }
 
         User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .name(request.name())
+                .email(request.email())
+                .passwordHash(passwordEncoder.encode(request.password()))
                 .verified(false)
                 .build();
 
@@ -42,46 +53,40 @@ public class AuthService {
     }
 
     public MessageResponse verifyOtp(VerifyOtpRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
-        boolean success = otpService.verifyOtp(user, request.getOtp());
+        boolean success = otpService.verifyOtp(user, request.otp());
         if (!success) {
-            throw new IllegalStateException("Invalid or expired OTP");
+            throw new BadRequestException("Invalid or expired OTP");
         }
         return new MessageResponse("Account verified. You can now log in.");
     }
 
     public MessageResponse resendOtp(ResendOtpRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (user.isVerified()) {
-            throw new IllegalStateException("Account already verified");
+            throw new ConflictException("Account already verified");
         }
         otpService.generateAndSendOtp(user);
         return new MessageResponse("OTP resent");
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalStateException("Invalid credentials"));
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalStateException("Invalid credentials");
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            throw new UnauthorizedException("Invalid credentials");
         }
         if (!user.isVerified()) {
-            throw new IllegalStateException("Please verify your email before logging in");
+            throw new ForbiddenException("Please verify your email before logging in");
         }
 
         String token = jwtUtil.generateToken(user.getEmail());
-
-        UserResponse userResponse = UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .build();
-
+        UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail());
         return new AuthResponse(token, userResponse);
     }
 }

@@ -4,6 +4,8 @@ import com.taskoura.dto.CommentDtos.*;
 import com.taskoura.entity.Comment;
 import com.taskoura.entity.Task;
 import com.taskoura.entity.User;
+import com.taskoura.exception.BadRequestException;
+import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.CommentRepository;
 import com.taskoura.repository.TaskRepository;
 import com.taskoura.repository.UserRepository;
@@ -26,16 +28,20 @@ public class CommentService {
     }
 
     public CommentResponse addComment(UUID taskId, CreateCommentRequest request, String userEmail) {
+        if (request == null || request.content() == null || request.content().trim().isEmpty()) {
+            throw new BadRequestException("Comment content cannot be empty");
+        }
+
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalStateException("Task not found"));
+                .orElseThrow(() -> new NotFoundException("Task not found"));
 
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         Comment comment = Comment.builder()
                 .task(task)
                 .user(user)
-                .content(request.content())
+                .content(request.content().trim())
                 .build();
 
         Comment saved = commentRepository.save(comment);
@@ -43,6 +49,10 @@ public class CommentService {
     }
 
     public List<CommentResponse> getComments(UUID taskId) {
+        if (!taskRepository.existsById(taskId)) {
+            throw new NotFoundException("Task not found");
+        }
+
         return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId)
                 .stream()
                 .map(this::toResponse)

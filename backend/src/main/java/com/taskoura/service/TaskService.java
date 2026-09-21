@@ -6,10 +6,12 @@ import com.taskoura.entity.Project;
 import com.taskoura.entity.Task;
 import com.taskoura.entity.TaskStatusLog;
 import com.taskoura.entity.User;
+import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.TaskRepository;
 import com.taskoura.repository.TaskStatusLogRepository;
 import com.taskoura.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,7 +39,7 @@ public class TaskService {
         User assignee = null;
         if (request.assignedTo() != null) {
             assignee = userRepository.findById(request.assignedTo())
-                    .orElseThrow(() -> new IllegalStateException("Assignee not found"));
+                    .orElseThrow(() -> new NotFoundException("Assignee not found"));
         }
 
         Task task = Task.builder()
@@ -47,6 +49,7 @@ public class TaskService {
                 .description(request.description())
                 .category(request.category())
                 .priority(request.priority())
+                .status("Backlog") // Always starts at Backlog
                 .deadline(request.deadline())
                 .build();
 
@@ -55,18 +58,21 @@ public class TaskService {
     }
 
     public List<TaskResponse> getTasksForProject(UUID projectId) {
+        projectService.getProjectEntityOrThrow(projectId);
+
         return taskRepository.findByProjectId(projectId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
+    @Transactional
     public TaskResponse updateStatus(UUID taskId, UpdateTaskStatusRequest request, String changedByEmail) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalStateException("Task not found"));
+                .orElseThrow(() -> new NotFoundException("Task not found"));
 
         User changedByUser = userRepository.findByEmail(changedByEmail)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         String oldStatus = task.getStatus();
         String newStatus = request.status();
@@ -82,6 +88,8 @@ public class TaskService {
         task.setStatus(newStatus);
         if ("Completed".equalsIgnoreCase(newStatus)) {
             task.setCompletedAt(LocalDateTime.now());
+        } else {
+            task.setCompletedAt(null);
         }
 
         Task saved = taskRepository.save(task);
@@ -89,6 +97,10 @@ public class TaskService {
     }
 
     public List<TaskStatusLogResponse> getStatusHistory(UUID taskId) {
+        if (!taskRepository.existsById(taskId)) {
+            throw new NotFoundException("Task not found");
+        }
+
         return taskStatusLogRepository.findByTaskIdOrderByChangedAtAsc(taskId)
                 .stream()
                 .map(log -> new TaskStatusLogResponse(
