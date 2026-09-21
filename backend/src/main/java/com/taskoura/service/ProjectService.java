@@ -2,7 +2,10 @@ package com.taskoura.service;
 
 import com.taskoura.dto.ProjectDtos.*;
 import com.taskoura.entity.Project;
+import com.taskoura.entity.ProjectMember;
 import com.taskoura.entity.User;
+import com.taskoura.exception.NotFoundException;
+import com.taskoura.repository.ProjectMemberRepository;
 import com.taskoura.repository.ProjectRepository;
 import com.taskoura.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -15,15 +18,19 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
-    public ProjectService(ProjectRepository projectRepository, UserRepository userRepository) {
+    public ProjectService(ProjectRepository projectRepository,
+                          UserRepository userRepository,
+                          ProjectMemberRepository projectMemberRepository) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
+        this.projectMemberRepository = projectMemberRepository;
     }
 
     public ProjectResponse createProject(String ownerEmail, CreateProjectRequest request) {
         User owner = userRepository.findByEmail(ownerEmail)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         Project project = Project.builder()
                 .name(request.name())
@@ -37,12 +44,20 @@ public class ProjectService {
                 .build();
 
         Project saved = projectRepository.save(project);
+
+        ProjectMember ownerMember = ProjectMember.builder()
+                .project(saved)
+                .user(owner)
+                .role("Owner")
+                .build();
+        projectMemberRepository.save(ownerMember);
+
         return toResponse(saved);
     }
 
     public List<ProjectResponse> getProjectsForUser(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalStateException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         return projectRepository.findByOwnerId(user.getId())
                 .stream()
@@ -52,7 +67,7 @@ public class ProjectService {
 
     public Project getProjectEntityOrThrow(UUID projectId) {
         return projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalStateException("Project not found"));
+                .orElseThrow(() -> new NotFoundException("Project not found"));
     }
 
     private ProjectResponse toResponse(Project project) {

@@ -7,42 +7,44 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tasks")
+@Table(name = "bugs")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Task {
+public class Bug {
 
     @Id
     @GeneratedValue
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @JoinColumn(name = "task_id", nullable = false)
+    private Task task;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reported_by", nullable = false)
+    private User reportedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_to")
     private User assignedTo;
 
-    private String title;
+    @Column(columnDefinition = "TEXT")
     private String description;
-    private String category;   // Frontend, Backend, Database, Testing, Documentation
-    private String priority;   // High, Medium, Low
+
+    private String severity; // Low, Medium, High, Critical
 
     @Builder.Default
-    private String status = "Backlog";  // Backlog, InProgress, Testing, Completed
-
-    private LocalDate deadline;
-    private LocalDateTime completedAt;
+    private String status = "Open"; // Open, Resolved
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime resolvedAt;
 }
