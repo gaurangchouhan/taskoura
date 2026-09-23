@@ -39,6 +39,9 @@ class ProjectMemberServiceTest {
     @Mock
     private ProjectService projectService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private ProjectMemberService projectMemberService;
 

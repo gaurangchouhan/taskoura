@@ -24,15 +24,19 @@ public class TaskService {
     private final UserRepository userRepository;
     private final ProjectService projectService;
     private final TaskStatusLogRepository taskStatusLogRepository;
+    private final NotificationService notificationService;
 
     public TaskService(TaskRepository taskRepository, UserRepository userRepository,
-                        ProjectService projectService, TaskStatusLogRepository taskStatusLogRepository) {
+                       ProjectService projectService, TaskStatusLogRepository taskStatusLogRepository,
+                       NotificationService notificationService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.projectService = projectService;
         this.taskStatusLogRepository = taskStatusLogRepository;
+        this.notificationService = notificationService;
     }
 
+    @Transactional
     public TaskResponse createTask(UUID projectId, CreateTaskRequest request) {
         Project project = projectService.getProjectEntityOrThrow(projectId);
 
@@ -54,6 +58,18 @@ public class TaskService {
                 .build();
 
         Task saved = taskRepository.save(task);
+
+        // Notify assignee when task is created with an assignment
+        if (assignee != null) {
+            notificationService.createNotification(assignee,
+                    "You have been assigned to task: \"" + saved.getTitle() + "\"");
+        }
+
+        // Log TASK_CREATED activity
+        notificationService.logActivity(project, project.getOwner(),
+                "TASK_CREATED",
+                "Task \"" + saved.getTitle() + "\" was created");
+
         return toResponse(saved);
     }
 
@@ -93,6 +109,30 @@ public class TaskService {
         }
 
         Task saved = taskRepository.save(task);
+
+        // Log TASK_STATUS_CHANGED activity
+        notificationService.logActivity(task.getProject(), changedByUser,
+                "TASK_STATUS_CHANGED",
+                "Task \"" + task.getTitle() + "\" status changed from " + oldStatus + " to " + newStatus);
+
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TaskResponse reassignTask(UUID taskId, UUID newAssigneeId, String actorEmail) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new NotFoundException("Task not found"));
+
+        User newAssignee = userRepository.findById(newAssigneeId)
+                .orElseThrow(() -> new NotFoundException("Assignee not found"));
+
+        task.setAssignedTo(newAssignee);
+        Task saved = taskRepository.save(task);
+
+        // Notify the new assignee
+        notificationService.createNotification(newAssignee,
+                "You have been assigned to task: \"" + task.getTitle() + "\"");
+
         return toResponse(saved);
     }
 

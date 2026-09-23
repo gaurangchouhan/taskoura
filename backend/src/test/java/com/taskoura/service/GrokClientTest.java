@@ -33,8 +33,8 @@ class GrokClientTest {
         objectMapper = new ObjectMapper();
 
         grokClient = new GrokClient(restTemplate, objectMapper);
-        ReflectionTestUtils.setField(grokClient, "apiKey", "");
-        ReflectionTestUtils.setField(grokClient, "apiUrl", "");
+        ReflectionTestUtils.setField(grokClient, "apiKey", "test-grok-api-key");
+        ReflectionTestUtils.setField(grokClient, "apiUrl", "https://api.x.ai/v1/chat/completions");
         ReflectionTestUtils.setField(grokClient, "model", "grok-beta");
     }
 

@@ -19,13 +19,16 @@ public class ProjectMemberService {
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
     private final ProjectService projectService;
+    private final NotificationService notificationService;
 
     public ProjectMemberService(ProjectMemberRepository projectMemberRepository,
-                                 UserRepository userRepository,
-                                 ProjectService projectService) {
+                                UserRepository userRepository,
+                                ProjectService projectService,
+                                NotificationService notificationService) {
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
         this.projectService = projectService;
+        this.notificationService = notificationService;
     }
 
     public ProjectMemberResponse inviteMember(UUID projectId, InviteMemberRequest request) {
@@ -45,6 +48,12 @@ public class ProjectMemberService {
                 .build();
 
         ProjectMember saved = projectMemberRepository.save(member);
+
+        // Log MEMBER_INVITED activity
+        notificationService.logActivity(project, user,
+                "MEMBER_INVITED",
+                user.getName() + " was invited to project \"" + project.getName() + "\" as " + saved.getRole());
+
         return toResponse(saved);
     }
 
