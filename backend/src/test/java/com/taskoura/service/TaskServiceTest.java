@@ -46,6 +46,9 @@ class TaskServiceTest {
     @Mock
     private TaskStatusLogRepository taskStatusLogRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TaskService taskService;
 

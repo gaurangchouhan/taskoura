@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface TaskStatusLogRepository extends JpaRepository<TaskStatusLog, UUID> {
     List<TaskStatusLog> findByTaskIdOrderByChangedAtAsc(UUID taskId);
+    List<TaskStatusLog> findByTaskProjectId(UUID projectId);
 }

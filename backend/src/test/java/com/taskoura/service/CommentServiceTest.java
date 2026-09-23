@@ -3,6 +3,7 @@ package com.taskoura.service;
 import com.taskoura.dto.CommentDtos.CreateCommentRequest;
 import com.taskoura.dto.CommentDtos.CommentResponse;
 import com.taskoura.entity.Comment;
+import com.taskoura.entity.Project;
 import com.taskoura.entity.Task;
 import com.taskoura.entity.User;
 import com.taskoura.exception.BadRequestException;
@@ -40,6 +41,9 @@ class CommentServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private CommentService commentService;
 
@@ -50,7 +54,8 @@ class CommentServiceTest {
     @BeforeEach
     void setUp() {
         taskId = UUID.randomUUID();
-        task = Task.builder().id(taskId).title("Task").build();
+        Project project = Project.builder().id(UUID.randomUUID()).name("Test Project").build();
+        task = Task.builder().id(taskId).title("Task").project(project).build();
         author = User.builder().id(UUID.randomUUID()).name("Sarah Writer").email("sarah@example.com").build();
     }
 

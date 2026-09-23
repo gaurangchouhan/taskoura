@@ -45,4 +45,13 @@ public class TaskController {
     public ResponseEntity<List<TaskStatusLogResponse>> getStatusLogs(@PathVariable UUID taskId) {
         return ResponseEntity.ok(taskService.getStatusHistory(taskId));
     }
+
+    @PatchMapping("/api/tasks/{taskId}/assign")
+    public ResponseEntity<TaskResponse> reassignTask(
+            @PathVariable UUID taskId,
+            @RequestParam UUID assigneeId,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(taskService.reassignTask(taskId, assigneeId, authentication.getName()));
+    }
 }

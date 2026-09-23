@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface TestCaseRepository extends JpaRepository<TestCase, UUID> {
     List<TestCase> findByTaskId(UUID taskId);
     List<TestCase> findByTaskIdOrderByExecutedAtAsc(UUID taskId);
+    List<TestCase> findByTaskProjectId(UUID projectId);
 }

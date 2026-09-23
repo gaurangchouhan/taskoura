@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface BugRepository extends JpaRepository<Bug, UUID> {
     List<Bug> findByTaskId(UUID taskId);
     List<Bug> findByTaskIdOrderByCreatedAtAsc(UUID taskId);
+    List<Bug> findByTaskProjectId(UUID projectId);
 }

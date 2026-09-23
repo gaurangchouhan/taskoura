@@ -20,11 +20,14 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public CommentService(CommentRepository commentRepository, TaskRepository taskRepository, UserRepository userRepository) {
+    public CommentService(CommentRepository commentRepository, TaskRepository taskRepository,
+                          UserRepository userRepository, NotificationService notificationService) {
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public CommentResponse addComment(UUID taskId, CreateCommentRequest request, String userEmail) {
@@ -45,6 +48,12 @@ public class CommentService {
                 .build();
 
         Comment saved = commentRepository.save(comment);
+
+        // Log COMMENT_ADDED activity
+        notificationService.logActivity(task.getProject(), user,
+                "COMMENT_ADDED",
+                user.getName() + " commented on task \"" + task.getTitle() + "\"");
+
         return toResponse(saved);
     }
 
