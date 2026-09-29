@@ -41,5 +41,7 @@ public class User {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    
+    private String resetOtpCode;
+
+    private LocalDateTime resetOtpExpiresAt;
 }

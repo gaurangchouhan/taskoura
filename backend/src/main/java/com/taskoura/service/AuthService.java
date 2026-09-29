@@ -1,10 +1,12 @@
 package com.taskoura.service;
 
 import com.taskoura.dto.AuthResponse;
+import com.taskoura.dto.ForgotPasswordRequest;
 import com.taskoura.dto.LoginRequest;
 import com.taskoura.dto.MessageResponse;
 import com.taskoura.dto.RegisterRequest;
 import com.taskoura.dto.ResendOtpRequest;
+import com.taskoura.dto.ResetPasswordRequest;
 import com.taskoura.dto.UserResponse;
 import com.taskoura.dto.VerifyOtpRequest;
 import com.taskoura.entity.User;
@@ -13,6 +15,7 @@ import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.ForbiddenException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.exception.UnauthorizedException;
+import java.util.Optional;
 import com.taskoura.repository.UserRepository;
 import com.taskoura.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -88,5 +91,33 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getEmail());
         UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail());
         return new AuthResponse(token, userResponse);
+    }
+
+    public MessageResponse forgotPassword(ForgotPasswordRequest request) {
+        Optional<User> optionalUser = userRepository.findByEmail(request.email());
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            if (!user.isVerified()) {
+                throw new BadRequestException("Account is not verified. Please verify your email first.");
+            }
+            otpService.generateAndSendResetOtp(user);
+        }
+        return new MessageResponse("If an account exists with that email, a password reset code has been sent.");
+    }
+
+    public MessageResponse resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BadRequestException("Invalid or expired reset code"));
+
+        if (!otpService.verifyResetOtp(user, request.otp())) {
+            throw new BadRequestException("Invalid or expired reset code");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setResetOtpCode(null);
+        user.setResetOtpExpiresAt(null);
+        userRepository.save(user);
+
+        return new MessageResponse("Password reset successfully. You can now log in with your new password.");
     }
 }

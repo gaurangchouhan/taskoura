@@ -205,4 +205,83 @@ class AuthServiceTest {
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Please verify your email before logging in");
     }
+
+    @Test
+    @DisplayName("forgotPassword: unverified account throws BadRequestException")
+    void forgotPassword_unverified_throwsBadRequest() {
+        sampleUser.setVerified(false);
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
+
+        com.taskoura.dto.ForgotPasswordRequest request = new com.taskoura.dto.ForgotPasswordRequest("alex@example.com");
+        assertThatThrownBy(() -> authService.forgotPassword(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Account is not verified. Please verify your email first.");
+    }
+
+    @Test
+    @DisplayName("forgotPassword: verified account sends reset OTP and returns standard message")
+    void forgotPassword_verified_success() {
+        sampleUser.setVerified(true);
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
+
+        com.taskoura.dto.ForgotPasswordRequest request = new com.taskoura.dto.ForgotPasswordRequest("alex@example.com");
+        MessageResponse response = authService.forgotPassword(request);
+
+        assertThat(response.message()).isEqualTo("If an account exists with that email, a password reset code has been sent.");
+        verify(otpService).generateAndSendResetOtp(sampleUser);
+    }
+
+    @Test
+    @DisplayName("forgotPassword: non-existent email returns identical message (anti-enumeration)")
+    void forgotPassword_nonExistent_returnsIdenticalMessage() {
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        com.taskoura.dto.ForgotPasswordRequest request = new com.taskoura.dto.ForgotPasswordRequest("unknown@example.com");
+        MessageResponse response = authService.forgotPassword(request);
+
+        assertThat(response.message()).isEqualTo("If an account exists with that email, a password reset code has been sent.");
+        verify(otpService, never()).generateAndSendResetOtp(any());
+    }
+
+    @Test
+    @DisplayName("resetPassword: user not found throws BadRequestException")
+    void resetPassword_userNotFound_throwsBadRequest() {
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        com.taskoura.dto.ResetPasswordRequest request = new com.taskoura.dto.ResetPasswordRequest("unknown@example.com", "1234", "newPass");
+        assertThatThrownBy(() -> authService.resetPassword(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Invalid or expired reset code");
+    }
+
+    @Test
+    @DisplayName("resetPassword: wrong or expired OTP throws BadRequestException")
+    void resetPassword_invalidOtp_throwsBadRequest() {
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
+        when(otpService.verifyResetOtp(sampleUser, "9999")).thenReturn(false);
+
+        com.taskoura.dto.ResetPasswordRequest request = new com.taskoura.dto.ResetPasswordRequest("alex@example.com", "9999", "newPass");
+        assertThatThrownBy(() -> authService.resetPassword(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Invalid or expired reset code");
+    }
+
+    @Test
+    @DisplayName("resetPassword: valid OTP hashes new password and clears reset fields")
+    void resetPassword_success() {
+        sampleUser.setResetOtpCode("1234");
+        sampleUser.setResetOtpExpiresAt(java.time.LocalDateTime.now().plusMinutes(10));
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
+        when(otpService.verifyResetOtp(sampleUser, "1234")).thenReturn(true);
+        when(passwordEncoder.encode("newPassword123")).thenReturn("new_hash");
+
+        com.taskoura.dto.ResetPasswordRequest request = new com.taskoura.dto.ResetPasswordRequest("alex@example.com", "1234", "newPassword123");
+        MessageResponse response = authService.resetPassword(request);
+
+        assertThat(response.message()).isEqualTo("Password reset successfully. You can now log in with your new password.");
+        assertThat(sampleUser.getPasswordHash()).isEqualTo("new_hash");
+        assertThat(sampleUser.getResetOtpCode()).isNull();
+        assertThat(sampleUser.getResetOtpExpiresAt()).isNull();
+        verify(userRepository).save(sampleUser);
+    }
 }

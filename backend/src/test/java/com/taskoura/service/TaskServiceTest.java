@@ -158,6 +158,55 @@ class TaskServiceTest {
     }
 
     @Test
+    @DisplayName("updateStatus: non-assignee changes status -> assignee gets notification")
+    void updateStatus_byNonAssignee_notifiesAssignee() {
+        UUID taskId = UUID.randomUUID();
+        User assignee = User.builder().id(UUID.randomUUID()).name("Dev").email("dev@test.com").build();
+        User manager = User.builder().id(UUID.randomUUID()).name("Manager").email("mgr@test.com").build();
+
+        Task task = Task.builder()
+                .id(taskId)
+                .title("Fix bug")
+                .status("InProgress")
+                .assignedTo(assignee)
+                .project(project)
+                .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(userRepository.findByEmail("mgr@test.com")).thenReturn(Optional.of(manager));
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        taskService.updateStatus(taskId, new UpdateTaskStatusRequest("Testing"), "mgr@test.com");
+
+        verify(notificationService).createNotification(assignee,
+                "Task 'Fix bug' status changed from InProgress to Testing.");
+    }
+
+    @Test
+    @DisplayName("updateStatus: assignee changes status themselves -> no notification is created")
+    void updateStatus_byAssignee_noNotification() {
+        UUID taskId = UUID.randomUUID();
+        User assignee = User.builder().id(UUID.randomUUID()).name("Dev").email("dev@test.com").build();
+
+        Task task = Task.builder()
+                .id(taskId)
+                .title("Fix bug")
+                .status("InProgress")
+                .assignedTo(assignee)
+                .project(project)
+                .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(userRepository.findByEmail("dev@test.com")).thenReturn(Optional.of(assignee));
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        taskService.updateStatus(taskId, new UpdateTaskStatusRequest("Testing"), "dev@test.com");
+
+        verify(notificationService, never()).createNotification(eq(assignee), contains("status changed"));
+    }
+
+
+    @Test
     @DisplayName("getStatusHistory: returns ordered logs for existing task")
     void getStatusHistory_success() {
         UUID taskId = UUID.randomUUID();
@@ -191,5 +240,66 @@ class TaskServiceTest {
         assertThatThrownBy(() -> taskService.getStatusHistory(taskId))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Task not found");
+    }
+
+    @Test
+    @DisplayName("createSubtask: successfully creates subtask inheriting parent project")
+    void createSubtask_success() {
+        UUID parentId = UUID.randomUUID();
+        Task parent = Task.builder().id(parentId).title("Parent Feature").project(project).build();
+        CreateTaskRequest req = new CreateTaskRequest("Subtask 1", "Subtask details", "Frontend", "High", user.getId(), LocalDate.now().plusDays(3));
+
+        when(taskRepository.findById(parentId)).thenReturn(Optional.of(parent));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> {
+            Task t = inv.getArgument(0);
+            t.setId(UUID.randomUUID());
+            return t;
+        });
+
+        TaskResponse res = taskService.createSubtask(parentId, req);
+
+        assertThat(res).isNotNull();
+        assertThat(res.title()).isEqualTo("Subtask 1");
+        assertThat(res.parentTaskId()).isEqualTo(parentId);
+        assertThat(res.status()).isEqualTo("Backlog");
+        verify(taskRepository).save(argThat(t -> t.getParentTask().equals(parent) && t.getProject().equals(project)));
+    }
+
+    @Test
+    @DisplayName("createSubtask: rejects nested subtasks with BadRequestException (only 1 level allowed)")
+    void createSubtask_nestedSubtask_throwsBadRequest() {
+        UUID grandparentId = UUID.randomUUID();
+        Task grandparent = Task.builder().id(grandparentId).title("Grandparent").project(project).build();
+        UUID parentId = UUID.randomUUID();
+        Task parentSubtask = Task.builder().id(parentId).title("Parent Subtask").project(project).parentTask(grandparent).build();
+
+        CreateTaskRequest req = new CreateTaskRequest("Nested Subtask", "desc", "Backend", "Low", null, null);
+
+        when(taskRepository.findById(parentId)).thenReturn(Optional.of(parentSubtask));
+
+        assertThatThrownBy(() -> taskService.createSubtask(parentId, req))
+                .isInstanceOf(com.taskoura.exception.BadRequestException.class)
+                .hasMessageContaining("Subtasks cannot have nested subtasks");
+
+        verify(taskRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("getSubtasks: returns direct subtasks for parent task")
+    void getSubtasks_returnsList() {
+        UUID parentId = UUID.randomUUID();
+        Task parent = Task.builder().id(parentId).title("Parent").project(project).build();
+        Task sub1 = Task.builder().id(UUID.randomUUID()).title("Sub 1").project(project).parentTask(parent).build();
+        Task sub2 = Task.builder().id(UUID.randomUUID()).title("Sub 2").project(project).parentTask(parent).build();
+
+        when(taskRepository.existsById(parentId)).thenReturn(true);
+        when(taskRepository.findByParentTaskIdOrderByCreatedAtAsc(parentId)).thenReturn(List.of(sub1, sub2));
+
+        List<TaskResponse> subtasks = taskService.getSubtasks(parentId);
+
+        assertThat(subtasks).hasSize(2);
+        assertThat(subtasks.get(0).title()).isEqualTo("Sub 1");
+        assertThat(subtasks.get(1).title()).isEqualTo("Sub 2");
     }
 }
