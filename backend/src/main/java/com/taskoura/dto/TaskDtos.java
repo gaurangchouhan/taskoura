@@ -25,6 +25,13 @@ public class TaskDtos {
             String status,
             UUID assignedTo,
             LocalDate deadline,
-            LocalDateTime completedAt
-    ) {}
+            LocalDateTime completedAt,
+            UUID parentTaskId,
+            int subtaskCount
+    ) {
+        public TaskResponse(UUID id, String title, String category, String priority,
+                            String status, UUID assignedTo, LocalDate deadline, LocalDateTime completedAt) {
+            this(id, title, category, priority, status, assignedTo, deadline, completedAt, null, 0);
+        }
+    }
 }

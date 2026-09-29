@@ -54,14 +54,22 @@ public class DashboardReportService {
         List<Task> tasks = taskRepository.findByProjectId(projectId);
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
 
-        long totalTasks = tasks.size();
-        long completedTasks = tasks.stream()
+        // Design Decision (Module 14): Subtasks (where parentTask != null) are excluded
+        // from project-level totalTasks, completedTasks, and completionPercentage to represent
+        // deliverable progress and avoid double-counting parent progress.
+        List<Task> topLevelTasks = tasks.stream()
+                .filter(t -> t.getParentTask() == null)
+                .toList();
+
+        long totalTasks = topLevelTasks.size();
+        long completedTasks = topLevelTasks.stream()
                 .filter(t -> "Completed".equalsIgnoreCase(t.getStatus()))
                 .count();
 
         double completionPercentage = totalTasks > 0
                 ? Math.round(((double) completedTasks / totalTasks) * 10000.0) / 100.0
                 : 0.0;
+
 
         Map<String, Long> tasksByStatus = new LinkedHashMap<>();
         tasksByStatus.put("Backlog", 0L);

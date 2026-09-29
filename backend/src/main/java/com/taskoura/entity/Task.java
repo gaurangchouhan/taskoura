@@ -32,6 +32,10 @@ public class Task {
     @JoinColumn(name = "assigned_to")
     private User assignedTo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_task_id")
+    private Task parentTask;
+
     private String title;
     private String description;
     private String category;   // Frontend, Backend, Database, Testing, Documentation

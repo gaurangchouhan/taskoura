@@ -8,4 +8,7 @@ import java.util.UUID;
 
 public interface TaskRepository extends JpaRepository<Task, UUID> {
     List<Task> findByProjectId(UUID projectId);
+    List<Task> findByParentTaskId(UUID parentTaskId);
+    List<Task> findByParentTaskIdOrderByCreatedAtAsc(UUID parentTaskId);
+    int countByParentTaskId(UUID parentTaskId);
 }

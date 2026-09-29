@@ -6,6 +6,7 @@ import com.taskoura.entity.Project;
 import com.taskoura.entity.Task;
 import com.taskoura.entity.TaskStatusLog;
 import com.taskoura.entity.User;
+import com.taskoura.exception.BadRequestException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.TaskRepository;
 import com.taskoura.repository.TaskStatusLogRepository;
@@ -115,6 +116,15 @@ public class TaskService {
                 "TASK_STATUS_CHANGED",
                 "Task \"" + task.getTitle() + "\" status changed from " + oldStatus + " to " + newStatus);
 
+        // Status-change notification (Module 15):
+        // Create a Notification for the task's assignedTo user (if set), saying:
+        // "Task '{title}' status changed from {old} to {new}."
+        // Skip if the person who changed the status IS the assignee.
+        if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(changedByUser.getId())) {
+            notificationService.createNotification(task.getAssignedTo(),
+                    "Task '" + task.getTitle() + "' status changed from " + oldStatus + " to " + newStatus + ".");
+        }
+
         return toResponse(saved);
     }
 
@@ -154,7 +164,62 @@ public class TaskService {
                 .toList();
     }
 
+    @Transactional
+    public TaskResponse createSubtask(UUID parentTaskId, CreateTaskRequest request) {
+        Task parentTask = taskRepository.findById(parentTaskId)
+                .orElseThrow(() -> new NotFoundException("Parent task not found"));
+
+        if (parentTask.getParentTask() != null) {
+            throw new BadRequestException("Subtasks cannot have nested subtasks (maximum 1 level of nesting allowed)");
+        }
+
+        Project project = parentTask.getProject();
+
+        User assignee = null;
+        if (request.assignedTo() != null) {
+            assignee = userRepository.findById(request.assignedTo())
+                    .orElseThrow(() -> new NotFoundException("Assignee not found"));
+        }
+
+        Task subtask = Task.builder()
+                .project(project)
+                .parentTask(parentTask)
+                .assignedTo(assignee)
+                .title(request.title())
+                .description(request.description())
+                .category(request.category())
+                .priority(request.priority())
+                .status("Backlog")
+                .deadline(request.deadline())
+                .build();
+
+        Task saved = taskRepository.save(subtask);
+
+        if (assignee != null) {
+            notificationService.createNotification(assignee,
+                    "You have been assigned to subtask: \"" + saved.getTitle() + "\"");
+        }
+
+        notificationService.logActivity(project, project.getOwner(),
+                "SUBTASK_CREATED",
+                "Subtask \"" + saved.getTitle() + "\" was created under parent task \"" + parentTask.getTitle() + "\"");
+
+        return toResponse(saved);
+    }
+
+    public List<TaskResponse> getSubtasks(UUID parentTaskId) {
+        if (!taskRepository.existsById(parentTaskId)) {
+            throw new NotFoundException("Parent task not found");
+        }
+
+        return taskRepository.findByParentTaskIdOrderByCreatedAtAsc(parentTaskId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     private TaskResponse toResponse(Task task) {
+        int subtaskCount = (task.getId() != null) ? taskRepository.countByParentTaskId(task.getId()) : 0;
         return new TaskResponse(
                 task.getId(),
                 task.getTitle(),
@@ -163,7 +228,9 @@ public class TaskService {
                 task.getStatus(),
                 task.getAssignedTo() != null ? task.getAssignedTo().getId() : null,
                 task.getDeadline(),
-                task.getCompletedAt()
+                task.getCompletedAt(),
+                task.getParentTask() != null ? task.getParentTask().getId() : null,
+                subtaskCount
         );
     }
 }

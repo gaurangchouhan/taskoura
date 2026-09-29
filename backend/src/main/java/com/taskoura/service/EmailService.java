@@ -25,4 +25,13 @@ public class EmailService {
         message.setText("Your OTP is: " + otpCode + "\nThis code expires in 10 minutes.");
         mailSender.send(message);
     }
+
+    public void sendPasswordResetEmail(String toEmail, String otpCode) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(toEmail);
+        message.setSubject("Taskoura — Password Reset Code");
+        message.setText("Your password reset code is: " + otpCode + "\nThis code expires in 10 minutes.");
+        mailSender.send(message);
+    }
 }

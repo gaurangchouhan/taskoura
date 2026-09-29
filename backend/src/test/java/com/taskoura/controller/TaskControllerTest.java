@@ -169,6 +169,53 @@ class TaskControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/tasks/{parentTaskId}/subtasks: 201 Created on subtask creation")
+    void createSubtask_success() throws Exception {
+        UUID parentTaskId = UUID.randomUUID();
+        CreateTaskRequest request = new CreateTaskRequest(
+                "Subtask A", "Description", "Frontend", "Medium", UUID.randomUUID(), LocalDate.now().plusDays(2)
+        );
+
+        TaskResponse response = new TaskResponse(
+                UUID.randomUUID(), "Subtask A", "Frontend", "Medium", "Backlog",
+                request.assignedTo(), request.deadline(), null, parentTaskId, 0
+        );
+
+        when(taskService.createSubtask(eq(parentTaskId), any(CreateTaskRequest.class))).thenReturn(response);
+
+        String token = jwtUtil.generateToken("developer@example.com");
+
+        mockMvc.perform(post("/api/tasks/{parentTaskId}/subtasks", parentTaskId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Subtask A"))
+                .andExpect(jsonPath("$.parentTaskId").value(parentTaskId.toString()));
+    }
+
+    @Test
+    @DisplayName("GET /api/tasks/{parentTaskId}/subtasks: 200 OK returns subtasks list")
+    void getSubtasks_success() throws Exception {
+        UUID parentTaskId = UUID.randomUUID();
+        TaskResponse subtask = new TaskResponse(
+                UUID.randomUUID(), "Subtask A", "Frontend", "Medium", "Backlog",
+                null, null, null, parentTaskId, 0
+        );
+
+        when(taskService.getSubtasks(parentTaskId)).thenReturn(List.of(subtask));
+
+        String token = jwtUtil.generateToken("developer@example.com");
+
+        mockMvc.perform(get("/api/tasks/{parentTaskId}/subtasks", parentTaskId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].title").value("Subtask A"))
+                .andExpect(jsonPath("$[0].parentTaskId").value(parentTaskId.toString()));
+    }
+
+    @Test
     @DisplayName("Task endpoints require authentication: 401 when unauthenticated")
     void taskEndpoints_unauthenticated_returns401() throws Exception {
         UUID id = UUID.randomUUID();

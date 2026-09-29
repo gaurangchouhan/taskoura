@@ -43,4 +43,18 @@ public class OtpService {
         userRepository.save(user);
         return true;
     }
+
+    public void generateAndSendResetOtp(User user) {
+        String otp = String.format("%04d", random.nextInt(10000));
+        user.setResetOtpCode(otp);
+        user.setResetOtpExpiresAt(LocalDateTime.now().plusMinutes(expiryMinutes));
+        userRepository.save(user);
+        emailService.sendPasswordResetEmail(user.getEmail(), otp);
+    }
+
+    public boolean verifyResetOtp(User user, String submittedOtp) {
+        if (user.getResetOtpCode() == null || user.getResetOtpExpiresAt() == null) return false;
+        if (LocalDateTime.now().isAfter(user.getResetOtpExpiresAt())) return false;
+        return user.getResetOtpCode().equals(submittedOtp);
+    }
 }

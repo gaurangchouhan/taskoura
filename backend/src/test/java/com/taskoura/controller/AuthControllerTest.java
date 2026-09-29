@@ -196,4 +196,60 @@ class AuthControllerTest {
                         .header("Authorization", "Bearer " + validToken))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @DisplayName("POST /api/auth/forgot-password: 200 OK with confirmation message")
+    void forgotPassword_returns200() throws Exception {
+        com.taskoura.dto.ForgotPasswordRequest request = new com.taskoura.dto.ForgotPasswordRequest("alex@example.com");
+        when(authService.forgotPassword(any()))
+                .thenReturn(new MessageResponse("If an account exists with that email, a password reset code has been sent."));
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("If an account exists with that email, a password reset code has been sent."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/forgot-password: 400 Bad Request on unverified account")
+    void forgotPassword_unverified_returns400() throws Exception {
+        com.taskoura.dto.ForgotPasswordRequest request = new com.taskoura.dto.ForgotPasswordRequest("unverified@example.com");
+        when(authService.forgotPassword(any()))
+                .thenThrow(new BadRequestException("Account is not verified. Please verify your email first."));
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Account is not verified. Please verify your email first."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/reset-password: 200 OK on successful password reset")
+    void resetPassword_returns200() throws Exception {
+        com.taskoura.dto.ResetPasswordRequest request = new com.taskoura.dto.ResetPasswordRequest("alex@example.com", "1234", "newPassword123");
+        when(authService.resetPassword(any()))
+                .thenReturn(new MessageResponse("Password reset successfully. You can now log in with your new password."));
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Password reset successfully. You can now log in with your new password."));
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/reset-password: 400 Bad Request on invalid/expired OTP")
+    void resetPassword_invalidOtp_returns400() throws Exception {
+        com.taskoura.dto.ResetPasswordRequest request = new com.taskoura.dto.ResetPasswordRequest("alex@example.com", "9999", "newPassword123");
+        when(authService.resetPassword(any()))
+                .thenThrow(new BadRequestException("Invalid or expired reset code"));
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid or expired reset code"));
+    }
 }

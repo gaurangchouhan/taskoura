@@ -4,6 +4,7 @@ import com.taskoura.dto.CommentDtos.CreateCommentRequest;
 import com.taskoura.dto.CommentDtos.CommentResponse;
 import com.taskoura.entity.Comment;
 import com.taskoura.entity.Project;
+import com.taskoura.entity.ProjectMember;
 import com.taskoura.entity.Task;
 import com.taskoura.entity.User;
 import com.taskoura.exception.BadRequestException;
@@ -43,6 +44,9 @@ class CommentServiceTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private com.taskoura.repository.ProjectMemberRepository projectMemberRepository;
 
     @InjectMocks
     private CommentService commentService;
@@ -118,7 +122,7 @@ class CommentServiceTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        when(taskRepository.existsById(taskId)).thenReturn(true);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
         when(commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId)).thenReturn(List.of(comment));
 
         List<CommentResponse> comments = commentService.getComments(taskId);
@@ -131,10 +135,52 @@ class CommentServiceTest {
     @Test
     @DisplayName("getComments: throws NotFoundException when task does not exist")
     void getComments_taskNotFound_throwsNotFound() {
-        when(taskRepository.existsById(taskId)).thenReturn(false);
+        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.getComments(taskId))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Task not found");
+    }
+
+    @Test
+    @DisplayName("addComment: mentioning project member triggers targeted notification")
+    void addComment_withMemberMention_triggersNotification() {
+        User bob = User.builder().id(UUID.randomUUID()).name("Bob Dev").email("bob@example.com").build();
+        ProjectMember bobMember = ProjectMember.builder().project(task.getProject()).user(bob).role("Member").build();
+
+        CreateCommentRequest req = new CreateCommentRequest("Hey @Bob Dev please check this");
+        Comment savedComment = Comment.builder().id(UUID.randomUUID()).task(task).user(author).content(req.content()).build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(userRepository.findByEmail(author.getEmail())).thenReturn(Optional.of(author));
+        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(projectMemberRepository.findByProjectId(task.getProject().getId())).thenReturn(List.of(bobMember));
+
+        CommentResponse res = commentService.addComment(taskId, req, author.getEmail());
+
+        assertThat(res).isNotNull();
+        assertThat(res.mentionedUserIds()).contains(bob.getId());
+        verify(notificationService).createNotification(eq(bob), contains("Sarah Writer mentioned you in a comment"));
+    }
+
+    @Test
+    @DisplayName("addComment: mentioning non-member does not create notification and comment saves fine")
+    void addComment_withNonMemberMention_noNotification() {
+        User bob = User.builder().id(UUID.randomUUID()).name("Bob Dev").email("bob@example.com").build();
+        ProjectMember bobMember = ProjectMember.builder().project(task.getProject()).user(bob).role("Member").build();
+
+        CreateCommentRequest req = new CreateCommentRequest("Hey @Stranger what do you think?");
+        Comment savedComment = Comment.builder().id(UUID.randomUUID()).task(task).user(author).content(req.content()).build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(userRepository.findByEmail(author.getEmail())).thenReturn(Optional.of(author));
+        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(projectMemberRepository.findByProjectId(task.getProject().getId())).thenReturn(List.of(bobMember));
+
+        CommentResponse res = commentService.addComment(taskId, req, author.getEmail());
+
+        assertThat(res).isNotNull();
+        assertThat(res.mentionedUserIds()).isEmpty();
+        verify(notificationService, never()).createNotification(any(), contains("mentioned you"));
     }
 }

@@ -54,4 +54,18 @@ public class TaskController {
     ) {
         return ResponseEntity.ok(taskService.reassignTask(taskId, assigneeId, authentication.getName()));
     }
+
+    @PostMapping("/api/tasks/{parentTaskId}/subtasks")
+    public ResponseEntity<TaskResponse> createSubtask(
+            @PathVariable UUID parentTaskId,
+            @RequestBody CreateTaskRequest request
+    ) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(taskService.createSubtask(parentTaskId, request));
+    }
+
+    @GetMapping("/api/tasks/{parentTaskId}/subtasks")
+    public ResponseEntity<List<TaskResponse>> getSubtasks(@PathVariable UUID parentTaskId) {
+        return ResponseEntity.ok(taskService.getSubtasks(parentTaskId));
+    }
 }

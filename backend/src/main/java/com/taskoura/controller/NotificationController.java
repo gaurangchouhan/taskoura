@@ -13,9 +13,12 @@ import java.util.UUID;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final com.taskoura.service.DeadlineReminderService deadlineReminderService;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(NotificationService notificationService,
+                                  com.taskoura.service.DeadlineReminderService deadlineReminderService) {
         this.notificationService = notificationService;
+        this.deadlineReminderService = deadlineReminderService;
     }
 
     @GetMapping("/api/notifications")
@@ -40,5 +43,11 @@ public class NotificationController {
             @PathVariable UUID projectId
     ) {
         return ResponseEntity.ok(notificationService.getActivityFeed(projectId));
+    }
+
+    @PostMapping("/api/reminders/trigger")
+    public ResponseEntity<java.util.Map<String, Object>> triggerReminders() {
+        int sent = deadlineReminderService.sendDeadlineReminders();
+        return ResponseEntity.ok(java.util.Map.of("message", "Reminders triggered successfully", "remindersSent", sent));
     }
 }
