@@ -32,4 +32,12 @@ public class ProjectController {
         String email = authentication.getName();
         return ResponseEntity.ok(projectService.getProjectsForUser(email));
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ProjectResponse> getProject(
+            @PathVariable java.util.UUID id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(projectService.getProjectById(id, authentication.getName()));
+    }
 }

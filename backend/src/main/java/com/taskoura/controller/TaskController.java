@@ -32,6 +32,11 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getTasksForProject(projectId));
     }
 
+    @GetMapping("/api/tasks/{taskId}")
+    public ResponseEntity<TaskResponse> getTask(@PathVariable UUID taskId) {
+        return ResponseEntity.ok(taskService.getTaskById(taskId));
+    }
+
     @PatchMapping("/api/tasks/{taskId}/status")
     public ResponseEntity<TaskResponse> updateStatus(
             @PathVariable UUID taskId,

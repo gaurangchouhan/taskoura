@@ -180,4 +180,23 @@ class ProjectControllerTest {
                         .header("Authorization", "Bearer garbage-token-12345"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("GET /api/projects/{id}: 200 OK when authenticated")
+    void getProjectById_authenticated_returns200() throws Exception {
+        UUID projectId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+        ProjectResponse response = new ProjectResponse(
+                projectId, "Single Proj", "Desc", ownerId, LocalDate.now().plusDays(10)
+        );
+
+        when(projectService.getProjectById(projectId, "charlie@example.com")).thenReturn(response);
+        String token = jwtUtil.generateToken("charlie@example.com");
+
+        mockMvc.perform(get("/api/projects/" + projectId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(projectId.toString()))
+                .andExpect(jsonPath("$.name").value("Single Proj"));
+    }
 }

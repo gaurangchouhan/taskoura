@@ -3,6 +3,7 @@ package com.taskoura.service;
 import com.taskoura.dto.ProjectDtos.CreateProjectRequest;
 import com.taskoura.dto.ProjectDtos.ProjectResponse;
 import com.taskoura.entity.Project;
+import com.taskoura.entity.ProjectMember;
 import com.taskoura.entity.User;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectMemberRepository;
@@ -178,5 +179,66 @@ class ProjectServiceTest {
         assertThatThrownBy(() -> projectService.getProjectEntityOrThrow(projectId))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessage("Project not found");
+    }
+
+    @Test
+    @DisplayName("getProjectsForUser: returns both owned projects and invited member projects without duplicates")
+    void getProjectsForUser_includesMemberProjects() {
+        Project ownedProj = Project.builder()
+                .id(UUID.randomUUID())
+                .name("Owned Project")
+                .description("Owned")
+                .owner(owner)
+                .deadline(LocalDate.now().plusDays(10))
+                .build();
+        User otherOwner = User.builder().id(UUID.randomUUID()).name("Other").email("other@example.com").build();
+        Project memberProj = Project.builder()
+                .id(UUID.randomUUID())
+                .name("Member Project")
+                .description("Invited")
+                .owner(otherOwner)
+                .deadline(LocalDate.now().plusDays(20))
+                .build();
+
+        ProjectMember pm = ProjectMember.builder().project(memberProj).user(owner).role("Member").build();
+
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(owner));
+        when(projectRepository.findByOwnerId(ownerId)).thenReturn(List.of(ownedProj));
+        when(projectMemberRepository.findByUserId(ownerId)).thenReturn(List.of(pm));
+
+        List<ProjectResponse> responses = projectService.getProjectsForUser("alex@example.com");
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses).extracting(ProjectResponse::name).containsExactlyInAnyOrder("Owned Project", "Member Project");
+    }
+
+    @Test
+    @DisplayName("getProjectById: returns project when caller is owner or member")
+    void getProjectById_success() {
+        UUID projectId = UUID.randomUUID();
+        Project project = Project.builder().id(projectId).name("Test Proj").owner(owner).deadline(LocalDate.now().plusDays(5)).build();
+
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(owner));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        ProjectResponse response = projectService.getProjectById(projectId, "alex@example.com");
+        assertThat(response.id()).isEqualTo(projectId);
+        assertThat(response.name()).isEqualTo("Test Proj");
+    }
+
+    @Test
+    @DisplayName("getProjectById: throws ForbiddenException when caller is neither owner nor member")
+    void getProjectById_forbidden() {
+        UUID projectId = UUID.randomUUID();
+        User someoneElse = User.builder().id(UUID.randomUUID()).email("someone@example.com").build();
+        Project project = Project.builder().id(projectId).name("Secret Proj").owner(someoneElse).build();
+
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(owner));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(projectMemberRepository.existsByProjectIdAndUserId(projectId, ownerId)).thenReturn(false);
+
+        assertThatThrownBy(() -> projectService.getProjectById(projectId, "alex@example.com"))
+                .isInstanceOf(com.taskoura.exception.ForbiddenException.class)
+                .hasMessage("You do not have access to this project");
     }
 }
