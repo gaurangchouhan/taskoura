@@ -224,4 +224,24 @@ class TaskControllerTest {
         mockMvc.perform(get("/api/tasks/{taskId}/status-logs", id))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("GET /api/tasks/{taskId}: 200 OK returns task details when authenticated")
+    void getTaskById_authenticated_returns200() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        TaskResponse response = new TaskResponse(
+                taskId, "Single Task", "Backend", "High", "InProgress",
+                null, null, null, null, 2
+        );
+
+        when(taskService.getTaskById(taskId)).thenReturn(response);
+        String token = jwtUtil.generateToken("developer@example.com");
+
+        mockMvc.perform(get("/api/tasks/{taskId}", taskId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(taskId.toString()))
+                .andExpect(jsonPath("$.title").value("Single Task"))
+                .andExpect(jsonPath("$.subtaskCount").value(2));
+    }
 }

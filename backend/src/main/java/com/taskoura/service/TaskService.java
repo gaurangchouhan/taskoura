@@ -218,6 +218,12 @@ public class TaskService {
                 .toList();
     }
 
+    public TaskResponse getTaskById(UUID taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new NotFoundException("Task not found"));
+        return toResponse(task);
+    }
+
     private TaskResponse toResponse(Task task) {
         int subtaskCount = (task.getId() != null) ? taskRepository.countByParentTaskId(task.getId()) : 0;
         return new TaskResponse(

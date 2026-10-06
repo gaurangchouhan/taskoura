@@ -302,4 +302,27 @@ class TaskServiceTest {
         assertThat(subtasks.get(0).title()).isEqualTo("Sub 1");
         assertThat(subtasks.get(1).title()).isEqualTo("Sub 2");
     }
+
+    @Test
+    @DisplayName("getTaskById: returns task response when found")
+    void getTaskById_success() {
+        UUID taskId = UUID.randomUUID();
+        Task t = Task.builder().id(taskId).title("Task 1").status("Todo").project(project).build();
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(t));
+
+        TaskResponse res = taskService.getTaskById(taskId);
+        assertThat(res.id()).isEqualTo(taskId);
+        assertThat(res.title()).isEqualTo("Task 1");
+    }
+
+    @Test
+    @DisplayName("getTaskById: throws NotFoundException when task does not exist")
+    void getTaskById_notFound() {
+        UUID taskId = UUID.randomUUID();
+        when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> taskService.getTaskById(taskId))
+                .isInstanceOf(com.taskoura.exception.NotFoundException.class)
+                .hasMessage("Task not found");
+    }
 }
