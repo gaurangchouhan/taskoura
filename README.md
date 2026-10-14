@@ -6,7 +6,7 @@
 [![Spring Security](https://img.shields.io/badge/Security-Spring%20Security%20%2B%20JWT-red.svg)](https://spring.io/projects/spring-security)
 [![Tests](https://img.shields.io/badge/Tests-240%20Passed-success.svg)](backend/src/test)
 
-A robust, enterprise-grade project management and collaboration platform engineered for software development teams and students. Taskoura blends industry-standard Agile workflows—Kanban boards, subtasks, role-based team management, QA test case execution, cloud attachments, and analytics—with AI-assisted project planning powered by the xAI Grok API.
+A robust, enterprise-grade project management and collaboration platform engineered for software development teams and students. Taskoura blends industry-standard Agile workflows—Kanban boards, subtasks, role-based team management, QA test case execution, cloud attachments, and analytics—with AI-assisted project planning powered by the Groq API (ultra-fast inference via https://console.groq.com/keys).
 
 ---
 
@@ -75,7 +75,7 @@ Taskoura has been developed across 16 cohesive, fully tested modules:
 7. **Quality Assurance — Bugs & Test Cases (Module 7)**:
    - **Bug Tracking**: Log defects with severity levels (`Low`, `Medium`, `High`, `Critical`), priority, assignees, and resolution turnaround tracking.
    - **QA Test Cases**: Design and log manual or automated test execution results (`passed`, `expectedResult`, `executedBy`, `executedAt`).
-8. **AI-Powered Task Breakdown (Module 8)**: Integration with the xAI Grok API to automatically decompose high-level user stories into structured engineering tasks with categories, priorities, and descriptions.
+8. **AI-Powered Task Breakdown (Module 8)**: Integration with the Groq API (`https://console.groq.com/keys`) to automatically decompose high-level user stories into structured engineering tasks with categories, priorities, and descriptions.
 9. **Activity Feed & In-App Notifications (Module 9)**: Project-wide activity logs auditing task creations, status updates, member invitations, and targeted personal notifications.
 10. **Dashboard Analytics & Executive Reports (Module 10)**:
     - Real-time project dashboard: task completion velocity, status distribution, and upcoming deadlines.
@@ -96,7 +96,7 @@ Taskoura has been developed across 16 cohesive, fully tested modules:
 | **Backend** | Java 21 / Spring Boot 3.4.x | REST API, Spring Data JPA, Spring Security, Validation |
 | **Database** | PostgreSQL 16 | Relational schema, foreign keys, indexes |
 | **Authentication** | Spring Security + JWT | Stateless bearer tokens, BCrypt hashing |
-| **AI Integration** | xAI Grok API | Automated task generation and breakdown |
+| **AI Integration** | Groq API (GroqCloud LPU) | Automated task generation and breakdown (Llama models) |
 | **Cloud Storage** | Cloudinary SDK | Cloud file attachments |
 | **Mail Service** | Spring Mail (JavaMailSender) | Verification codes and password reset OTPs |
 | **Testing** | JUnit 5, Mockito, AssertJ, Spring Test | 240 automated unit, slice, and integration tests |
@@ -178,7 +178,7 @@ Taskoura runs with the following normalized relations:
 | `GET` | `/api/projects/{projectId}/deadlines/upcoming` | Tasks due within N days | Yes |
 | `GET` | `/api/templates` | List pre-populated project templates | Yes |
 | `POST` | `/api/projects/from-template` | Create project initialized from template | Yes |
-| `POST` | `/api/projects/{projectId}/ai-tasks` | Generate tasks from user story via Grok | Yes |
+| `POST` | `/api/projects/{projectId}/ai-tasks` | Generate tasks from user story via Groq | Yes |
 | `GET` | `/api/projects/{projectId}/dashboard` | Sprint and status analytics summary | Yes |
 | `GET` | `/api/projects/{projectId}/report` | Executive per-member report (Owner only) | Yes |
 | `GET` | `/api/notifications` | Current user notifications | Yes |
@@ -200,8 +200,9 @@ Configure these in your environment or in `backend/src/main/resources/applicatio
 | `DB_PASSWORD` | Database password | `taskoura_pass` |
 | `JWT_SECRET` | Secret key for signing JWTs | `a-minimum-256-bit-secure-secret-key` |
 | `JWT_EXPIRATION_MS` | JWT token validity (milliseconds) | `86400000` (24 hours) |
-| `GROK_API_KEY` | xAI Grok API key | `xai-...` |
-| `GROK_API_URL` | xAI Grok completions endpoint | `https://api.x.ai/v1/chat/completions` |
+| `GROQ_API_KEY` | Groq API key (`https://console.groq.com/keys`) | `gsk_...` |
+| `GROQ_API_URL` | Groq chat completions endpoint | `https://api.groq.com/openai/v1/chat/completions` |
+| `GROQ_MODEL` | Groq model identifier | `llama-3.3-70b-versatile` |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary account cloud name | `your_cloud_name` |
 | `CLOUDINARY_API_KEY` | Cloudinary API Key | `your_api_key` |
 | `CLOUDINARY_API_SECRET` | Cloudinary API Secret | `your_api_secret` |

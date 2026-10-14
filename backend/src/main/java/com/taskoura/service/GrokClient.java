@@ -20,14 +20,14 @@ public class GrokClient {
 
     private static final Logger log = LoggerFactory.getLogger(GrokClient.class);
 
-    @Value("${grok.api.key}")
+    @Value("${groq.api.key:${grok.api.key:}}")
     private String apiKey;
 
-    @Value("${grok.api.url:https://api.x.ai/v1/chat/completions}")
-    private String apiUrl = "https://api.x.ai/v1/chat/completions";
+    @Value("${groq.api.url:${grok.api.url:https://api.groq.com/openai/v1/chat/completions}}")
+    private String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
-    @Value("${grok.model:grok-beta}")
-    private String model = "grok-beta";
+    @Value("${groq.model:${grok.model:llama-3.3-70b-versatile}}")
+    private String model = "llama-3.3-70b-versatile";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
