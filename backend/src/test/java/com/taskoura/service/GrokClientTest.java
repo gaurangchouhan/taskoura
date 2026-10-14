@@ -34,7 +34,7 @@ class GrokClientTest {
 
         grokClient = new GrokClient(restTemplate, objectMapper);
         ReflectionTestUtils.setField(grokClient, "apiKey", "test-grok-api-key");
-        ReflectionTestUtils.setField(grokClient, "apiUrl", "https://api.x.ai/v1/chat/completions");
+        ReflectionTestUtils.setField(grokClient, "apiUrl", "https://api.groq.com/openai/v1/chat/completions");
         ReflectionTestUtils.setField(grokClient, "model", "grok-beta");
     }
 
@@ -53,7 +53,7 @@ class GrokClientTest {
                 }
                 """;
 
-        mockServer.expect(requestTo("https://api.x.ai/v1/chat/completions"))
+        mockServer.expect(requestTo("https://api.groq.com/openai/v1/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", "Bearer test-grok-api-key"))
                 .andRespond(withSuccess(grokChatResponse, MediaType.APPLICATION_JSON));
@@ -94,11 +94,11 @@ class GrokClientTest {
                 }
                 """;
 
-        mockServer.expect(requestTo("https://api.x.ai/v1/chat/completions"))
+        mockServer.expect(requestTo("https://api.groq.com/openai/v1/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(badResponse, MediaType.APPLICATION_JSON));
 
-        mockServer.expect(requestTo("https://api.x.ai/v1/chat/completions"))
+        mockServer.expect(requestTo("https://api.groq.com/openai/v1/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(goodResponse, MediaType.APPLICATION_JSON));
 
@@ -113,7 +113,7 @@ class GrokClientTest {
     @Test
     @DisplayName("callGrokJson throws BadGatewayException on 500 error from Grok API")
     void callGrokJson_apiError_throwsBadGateway() {
-        mockServer.expect(requestTo("https://api.x.ai/v1/chat/completions"))
+        mockServer.expect(requestTo("https://api.groq.com/openai/v1/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withServerError());
 

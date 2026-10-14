@@ -18,20 +18,38 @@ public class EmailService {
     }
 
     public void sendOtpEmail(String toEmail, String otpCode) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromAddress);
-        message.setTo(toEmail);
-        message.setSubject("Taskoura — Your verification code");
-        message.setText("Your OTP is: " + otpCode + "\nThis code expires in 10 minutes.");
-        mailSender.send(message);
+        System.out.println("==================================================");
+        System.out.println("[TASKOURA OTP DISPATCH] To: " + toEmail + " | CODE: " + otpCode);
+        System.out.println("==================================================");
+        if (fromAddress != null && !fromAddress.trim().isEmpty()) {
+            try {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom(fromAddress);
+                message.setTo(toEmail);
+                message.setSubject("Taskoura — Your verification code");
+                message.setText("Your OTP is: " + otpCode + "\nThis code expires in 10 minutes.");
+                mailSender.send(message);
+            } catch (Exception e) {
+                System.err.println("Email delivery failed (falling back to console OTP): " + e.getMessage());
+            }
+        }
     }
 
     public void sendPasswordResetEmail(String toEmail, String otpCode) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromAddress);
-        message.setTo(toEmail);
-        message.setSubject("Taskoura — Password Reset Code");
-        message.setText("Your password reset code is: " + otpCode + "\nThis code expires in 10 minutes.");
-        mailSender.send(message);
+        System.out.println("==================================================");
+        System.out.println("[TASKOURA RESET OTP] To: " + toEmail + " | CODE: " + otpCode);
+        System.out.println("==================================================");
+        if (fromAddress != null && !fromAddress.trim().isEmpty()) {
+            try {
+                SimpleMailMessage message = new SimpleMailMessage();
+                message.setFrom(fromAddress);
+                message.setTo(toEmail);
+                message.setSubject("Taskoura — Password Reset Code");
+                message.setText("Your password reset code is: " + otpCode + "\nThis code expires in 10 minutes.");
+                mailSender.send(message);
+            } catch (Exception e) {
+                System.err.println("Password reset email delivery failed: " + e.getMessage());
+            }
+        }
     }
 }
