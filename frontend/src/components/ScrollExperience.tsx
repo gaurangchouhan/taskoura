@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Sparkles, ArrowDown } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -109,15 +108,6 @@ export const ScrollExperience: React.FC = () => {
     const frameTracker = { frame: 0 };
 
     const ctx = gsap.context(() => {
-      // 3a. Initial cinematic entrance reveal for the headline overlay
-      if (heroOverlayRef.current) {
-        gsap.fromTo(
-          heroOverlayRef.current,
-          { opacity: 0, y: 18, filter: 'blur(8px)', scale: 0.98 },
-          { opacity: 1, y: 0, filter: 'blur(0px)', scale: 1, duration: 0.9, delay: 0.15, ease: 'power2.out' }
-        );
-      }
-
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container,
@@ -126,20 +116,37 @@ export const ScrollExperience: React.FC = () => {
           pin: pinned,
           scrub: 0.5,
           anticipatePin: 1,
+          onLeaveBack: () => {
+            // When user scrolls back to the very top, ensure the headline is 100% visible
+            if (heroOverlayRef.current) {
+              gsap.set(heroOverlayRef.current, {
+                opacity: 1,
+                scale: 1,
+                y: 0,
+                filter: 'blur(0px)',
+              });
+            }
+          },
         },
       });
 
-      // Cinematic dissolve of the center text overlay in the first 0% - 10% of scroll
+      // Bidirectional cinematic dissolve: smoothly disappears on scroll down, and reappears on scroll up
       if (heroOverlayRef.current) {
-        tl.to(
+        tl.fromTo(
           heroOverlayRef.current,
+          {
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            filter: 'blur(0px)',
+          },
           {
             opacity: 0,
             scale: 0.92,
-            y: -35,
+            y: -32,
             filter: 'blur(12px)',
-            duration: 0.10,
-            ease: 'power2.out',
+            duration: 0.08,
+            ease: 'power1.out',
           },
           0
         );
@@ -193,33 +200,26 @@ export const ScrollExperience: React.FC = () => {
         >
           {/* Refined Pill Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-xl border border-sky-200/70 shadow-sm text-xs font-semibold text-slate-700 mb-3.5">
-            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
             <span className="bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent font-bold">
-              Taskoura Platform
+              Taskoura
             </span>
             <span className="text-slate-300">•</span>
-            <span className="text-slate-500 font-normal">Autonomous Engineering OS</span>
+            <span className="text-slate-600 font-medium">Project Management Platform</span>
           </div>
 
           {/* Premium Main Headline */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.08] drop-shadow-xs">
-            Where Code Meets{' '}
+            Plan Projects. Track Progress.{' '}
             <span className="bg-gradient-to-r from-sky-600 via-sky-500 to-indigo-600 bg-clip-text text-transparent">
-              Orchestration.
+              Work Together.
             </span>
           </h1>
 
           {/* Project-specific Subtitle */}
           <p className="mt-3 text-sm sm:text-base text-slate-600 font-normal max-w-xl mx-auto leading-relaxed drop-shadow-xs">
-            Deconstruct complex architectures, assign sprints, and track releases across engineering disciplines.
+            Organize tasks, collaborate with your team, and manage your software projects from start to finish.
           </p>
-
-          {/* Minimal Cinematic Scroll Cue */}
-          <div className="mt-5 flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-900/5 backdrop-blur-md border border-slate-200/60 text-[11px] font-semibold text-slate-600 tracking-wider uppercase">
-            <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-ping" />
-            <span>Scroll down to assemble workflow</span>
-            <ArrowDown className="w-3 h-3 text-slate-400 animate-bounce" />
-          </div>
         </div>
       </div>
     </div>
