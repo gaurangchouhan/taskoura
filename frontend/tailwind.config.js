@@ -1,46 +1,49 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          navy: '#1E2761',
-          teal: '#00A896',
-          canvas: '#F7F9FC',
-          card: '#FFFFFF',
-          frost: '#F1F5FD',
-          cornflower: '#CADCFC',
-          slate: '#64748B',
-          dark: '#0B1C30',
+        ice: {
+          50: '#f8fafc',
+          100: '#f0f7ff',
+          200: '#e0effe',
+          300: '#bae0fd',
+          400: '#7cc5fb',
+          500: '#38a5f8',
+          600: '#0c87eb',
         },
-        status: {
-          backlog: '#64748B',
-          progress: '#2563EB',
-          testing: '#D97706',
+        task: {
+          backlog: '#64748b',
+          progress: '#0284c7',
+          review: '#d97706',
           completed: '#059669',
-        }
+        },
       },
       fontFamily: {
-        sans: ['"Inter"', 'sans-serif'],
-        heading: ['"Plus Jakarta Sans"', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'monospace'],
-      },
-      borderRadius: {
-        'card': '16px',
-        'subtle': '12px',
-        'btn': '8px',
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(30, 39, 97, 0.04), 0 4px 12px 0 rgba(30, 39, 97, 0.03)',
-        'lifted': '0 12px 28px -4px rgba(30, 39, 97, 0.08), 0 4px 10px -2px rgba(30, 39, 97, 0.04)',
-        'modal': '0 24px 48px -12px rgba(30, 39, 97, 0.14), 0 8px 16px -4px rgba(30, 39, 97, 0.06)',
-        'glow-teal': '0 0 16px 2px rgba(0, 168, 150, 0.25)',
-      }
+        'subtle-card': '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03)',
+        'elevated-card': '0 20px 35px -5px rgba(14, 116, 144, 0.08), 0 10px 15px -3px rgba(15, 23, 42, 0.04)',
+        'glow-primary': '0 0 40px rgba(56, 165, 248, 0.18)',
+        'glow-kanban': '0 25px 60px -15px rgba(2, 132, 199, 0.12)',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
+        pulseGlow: {
+          '0%, 100%': { opacity: '0.4' },
+          '50%': { opacity: '0.8' },
+        },
+      },
+      animation: {
+        float: 'float 4s ease-in-out infinite',
+        pulseGlow: 'pulseGlow 3s ease-in-out infinite',
+      },
     },
   },
   plugins: [],
-}
+};

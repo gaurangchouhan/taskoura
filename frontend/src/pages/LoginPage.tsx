@@ -1,214 +1,130 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Layers, AlertCircle } from 'lucide-react';
-import api from '../api/client';
+import { FolderGit2, ArrowRight, Lock, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Navbar } from '../components/Navbar';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    setSubmitting(true);
 
     try {
-      const response = await api.post('/auth/login', { email: email.trim(), password });
-      const { token, user: userData } = response.data;
-      login(token, {
-        email: userData?.email || email,
-        fullName: userData?.name || 'Student Engineer',
-        name: userData?.name,
-        id: userData?.id
-      });
-      navigate('/projects');
-    } catch (err: any) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else if (err.response?.status === 403) {
-        setError('Your email is not verified yet. Please verify your OTP code before logging in.');
+      await login(email, password);
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axErr = err as { response?: { data?: { message?: string } } };
+        setError(axErr.response?.data?.message || 'Invalid credentials or server unavailable.');
       } else {
-        setError('Invalid email or password. Please try again.');
+        setError('Unable to connect to the authentication server. Ensure backend is running.');
       }
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#F7F9FC]">
-      {/* Left Panel: Navy to Teal Gradient with Branding */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-[#1E2761] via-[#151B44] to-[#00A896] p-12 lg:p-16 flex-col justify-between text-white relative overflow-hidden">
-        <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
-              <Layers className="w-5 h-5 text-teal-300" />
-            </div>
-            <span className="font-heading font-extrabold text-2xl text-white tracking-tight">Taskoura</span>
-          </Link>
+  const fillDemoAccount = () => {
+    setEmail('developer@taskoura.dev');
+    setPassword('Password123!');
+  };
 
-          <div className="mt-20">
-            <h2 className="font-heading text-4xl font-extrabold leading-tight tracking-tight">
-              Ship student projects like a real engineering team.
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-sky-50/60 via-[#f8fafc] to-white flex flex-col justify-between">
+      <Navbar />
+
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-28">
+        <div className="w-full max-w-md bg-white p-8 rounded-3xl border border-slate-200/80 shadow-xl shadow-sky-500/5">
+          {/* Logo & Headline */}
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white mx-auto mb-3 shadow-md shadow-sky-500/20">
+              <FolderGit2 className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Sign in to Taskoura
             </h2>
-            <p className="mt-4 text-slate-300 text-base leading-relaxed">
-              Agile Kanban tracking, sprint audit logs, and hardware biometric lab attendance — all in one unified workspace.
+            <p className="text-xs text-slate-500 mt-1">
+              Access your software development projects and task boards
             </p>
           </div>
-        </div>
 
-        {/* Faint Kanban Illustration */}
-        <div className="relative z-10 bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/15 shadow-xl max-w-md">
-          <div className="flex items-center justify-between text-xs font-semibold text-teal-200 mb-3">
-            <span>Sprint Board</span>
-            <span>4 Active Stages</span>
-          </div>
-          <div className="space-y-2">
-            <div className="bg-white/15 p-2.5 rounded-lg text-xs font-medium flex justify-between">
-              <span>TSK-102 Implement Auth API</span>
-              <span className="text-teal-300">In Progress</span>
-            </div>
-            <div className="bg-white/15 p-2.5 rounded-lg text-xs font-medium flex justify-between">
-              <span>TSK-105 Setup Fingerprint Slot Link</span>
-              <span className="text-amber-300">Testing</span>
-            </div>
-          </div>
-        </div>
-
-        <p className="relative z-10 text-xs text-slate-400">Taskoura Engineering Workspace • Minor Project 2026</p>
-      </div>
-
-      {/* Right Panel: Clean White Auth Card */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-2xl shadow-card border border-slate-200">
-          <div className="mb-6">
-            <h1 className="font-heading font-bold text-2xl text-[#1E2761]">Welcome back</h1>
-            <p className="text-sm text-slate-500 mt-1">Enter your credentials to access your student workspace.</p>
-          </div>
-
-          {/* Verification Alert Note */}
-          <div className="p-3.5 mb-6 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-[#2563EB] shrink-0 mt-0.5" />
-            <div className="text-xs text-[#1E2761] leading-relaxed">
-              <span className="font-semibold block">Need to verify?</span>
-              If you recently registered, please verify your email via the 4-digit OTP code before logging in.
-            </div>
-          </div>
-
+          {/* Error Message */}
           {error && (
-            <div className="p-3.5 mb-6 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex flex-col gap-2">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                <span>{error}</span>
-              </div>
-              {error.toLowerCase().includes('verify') && (
-                <Link
-                  to={`/verify-otp?email=${encodeURIComponent(email)}`}
-                  className="inline-block font-bold text-[#00A896] hover:underline ml-6"
-                >
-                  Click here to enter OTP and verify →
-                </Link>
-              )}
+            <div className="mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
+          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email address</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@university.edu"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#00A896] focus:ring-3 focus:ring-[#00A896]/15 text-sm transition-all"
-              />
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="engineer@taskoura.dev"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Password
+              </label>
               <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-[#00A896] focus:ring-3 focus:ring-[#00A896]/15 text-sm transition-all pr-10"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-2 py-3 rounded-lg bg-[#1E2761] hover:bg-[#151B44] text-white font-semibold text-sm transition-all shadow-sm hover:shadow disabled:opacity-50"
+              disabled={submitting}
+              className="w-full py-3 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? 'Logging in...' : 'Log in'}
+              <span>{submitting ? 'Authenticating...' : 'Sign In'}</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          {/* Quick Demo Login Pill for Evaluators & Testing */}
-          <div className="mt-5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Demo Quick Fill</span>
-              <span className="text-[10px] text-teal-600 font-semibold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">Ready to test</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('alex@university.edu');
-                  setPassword('password123');
-                  setError(null);
-                }}
-                className="text-left px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-[#00A896] hover:bg-teal-50/30 transition-all text-xs"
-              >
-                <div className="font-semibold text-slate-800">Alex Rivera</div>
-                <div className="text-[10px] text-slate-400 truncate">alex@university.edu</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('gaurangchouhan316@gmail.com');
-                  setPassword('password123');
-                  setError(null);
-                }}
-                className="text-left px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:border-[#00A896] hover:bg-teal-50/30 transition-all text-xs"
-              >
-                <div className="font-semibold text-slate-800">Gaurang</div>
-                <div className="text-[10px] text-slate-400 truncate">gaurangchouhan316...</div>
-              </button>
-            </div>
-            <div className="mt-2 text-[10px] text-slate-400 text-center">
-              Password for all accounts: <code className="font-mono text-slate-600 bg-slate-200/60 px-1 py-0.5 rounded">password123</code>
-            </div>
-          </div>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400">or</span></div>
-          </div>
-
-          <div className="text-center text-xs text-slate-600">
-            <span>New to Taskoura? </span>
-            <Link to="/signup" className="font-semibold text-[#00A896] hover:underline">
-              Sign up
-            </Link>
+          {/* Quick Demo Helper */}
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+            <button
+              type="button"
+              onClick={fillDemoAccount}
+              className="text-xs font-semibold text-sky-600 hover:text-sky-700 underline"
+            >
+              Prefill with standard credentials
+            </button>
+            <p className="text-xs text-slate-500 mt-4">
+              Don&apos;t have an account yet?{' '}
+              <Link to="/register" className="font-semibold text-sky-600 hover:underline">
+                Create one
+              </Link>
+            </p>
           </div>
         </div>
       </div>
