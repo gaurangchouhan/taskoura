@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,6 +56,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private com.taskoura.service.SessionService sessionService;
 
     @Test
     @DisplayName("POST /api/auth/register: 201 Created on valid registration")
@@ -132,7 +136,7 @@ class AuthControllerTest {
     void login_success() throws Exception {
         LoginRequest request = new LoginRequest("alex@example.com", "Password123!");
         UserResponse userResponse = new UserResponse(UUID.randomUUID(), "Alex Doe", "alex@example.com");
-        when(authService.login(any())).thenReturn(new AuthResponse("mock.jwt.token", userResponse));
+        when(authService.login(any(), any())).thenReturn(new AuthResponse("mock.jwt.token", userResponse));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -147,7 +151,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/login: 401 Unauthorized on wrong credentials")
     void login_wrongPassword_returns401() throws Exception {
         LoginRequest request = new LoginRequest("alex@example.com", "WrongPassword");
-        when(authService.login(any())).thenThrow(new UnauthorizedException("Invalid credentials"));
+        when(authService.login(any(), any())).thenThrow(new UnauthorizedException("Invalid credentials"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -161,7 +165,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/auth/login: 403 Forbidden when account is unverified")
     void login_unverified_returns403() throws Exception {
         LoginRequest request = new LoginRequest("alex@example.com", "Password123!");
-        when(authService.login(any())).thenThrow(new ForbiddenException("Please verify your email before logging in"));
+        when(authService.login(any(), any())).thenThrow(new ForbiddenException("Please verify your email before logging in"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -189,7 +193,21 @@ class AuthControllerTest {
     @Test
     @DisplayName("Protected endpoint: authenticated when valid JWT token is provided")
     void protectedEndpoint_validToken_passesSecurity() throws Exception {
-        String validToken = jwtUtil.generateToken("alex@example.com");
+        UUID sid = UUID.randomUUID();
+        java.time.Instant now = java.time.Instant.now();
+        java.time.Instant absExp = now.plusSeconds(3600);
+        String validToken = jwtUtil.generateToken("alex@example.com", sid, absExp);
+
+        com.taskoura.entity.UserSession mockSession = com.taskoura.entity.UserSession.builder()
+                .id(sid)
+                .createdAt(now)
+                .lastActivityAt(now)
+                .absoluteExpiresAt(absExp)
+                .build();
+
+        when(sessionService.getSession(sid)).thenReturn(java.util.Optional.of(mockSession));
+        when(sessionService.getClock()).thenReturn(java.time.Clock.systemUTC());
+        when(sessionService.validateSession(eq(mockSession), any())).thenReturn(java.util.Optional.empty());
 
         // The request passes Spring Security authentication and reaches the dispatcher (which returns 404 because ProjectController is not in this @WebMvcTest slice)
         mockMvc.perform(get("/api/projects")

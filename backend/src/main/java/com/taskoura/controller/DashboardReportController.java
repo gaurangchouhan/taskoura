@@ -3,6 +3,7 @@ package com.taskoura.controller;
 import com.taskoura.dto.DashboardReportDtos.DashboardResponse;
 import com.taskoura.dto.DashboardReportDtos.MemberPerformanceReport;
 import com.taskoura.service.DashboardReportService;
+import com.taskoura.service.ProjectAccessService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,13 +17,20 @@ import java.util.UUID;
 public class DashboardReportController {
 
     private final DashboardReportService dashboardReportService;
+    private final ProjectAccessService projectAccessService;
 
-    public DashboardReportController(DashboardReportService dashboardReportService) {
+    public DashboardReportController(DashboardReportService dashboardReportService, ProjectAccessService projectAccessService) {
         this.dashboardReportService = dashboardReportService;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping("/api/projects/{projectId}/dashboard")
-    public ResponseEntity<DashboardResponse> getDashboard(@PathVariable UUID projectId) {
+    public ResponseEntity<DashboardResponse> getDashboard(
+            @PathVariable UUID projectId,
+            Authentication authentication
+    ) {
+        String email = authentication != null ? authentication.getName() : null;
+        projectAccessService.requireMember(projectId, email);
         return ResponseEntity.ok(dashboardReportService.getDashboard(projectId));
     }
 
@@ -31,6 +39,8 @@ public class DashboardReportController {
             @PathVariable UUID projectId,
             Authentication authentication
     ) {
-        return ResponseEntity.ok(dashboardReportService.getPerformanceReport(projectId, authentication.getName()));
+        String email = authentication != null ? authentication.getName() : null;
+        projectAccessService.requireOwner(projectId, email);
+        return ResponseEntity.ok(dashboardReportService.getPerformanceReport(projectId, email));
     }
 }

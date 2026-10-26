@@ -6,16 +6,15 @@ import com.taskoura.entity.Task;
 import com.taskoura.entity.User;
 import com.taskoura.exception.BadRequestException;
 import com.taskoura.exception.NotFoundException;
+import com.taskoura.entity.ProjectMember;
 import com.taskoura.repository.CommentRepository;
+import com.taskoura.repository.ProjectMemberRepository;
 import com.taskoura.repository.TaskRepository;
 import com.taskoura.repository.UserRepository;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import com.taskoura.entity.ProjectMember;
-import com.taskoura.repository.ProjectMemberRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,17 +31,20 @@ public class CommentService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final ProjectMemberRepository projectMemberRepository;
+    private final EmailService emailService;
 
     public CommentService(CommentRepository commentRepository,
                           TaskRepository taskRepository,
                           UserRepository userRepository,
                           NotificationService notificationService,
-                          ProjectMemberRepository projectMemberRepository) {
+                          ProjectMemberRepository projectMemberRepository,
+                          @Autowired(required = false) EmailService emailService) {
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.projectMemberRepository = projectMemberRepository;
+        this.emailService = emailService;
     }
 
     public CommentResponse addComment(UUID taskId, CreateCommentRequest request, String userEmail) {
@@ -104,6 +106,9 @@ public class CommentService {
                         mentionedUserIds.add(memberUser.getId());
                         notificationService.createNotification(memberUser,
                                 commenter.getName() + " mentioned you in a comment on '" + task.getTitle() + "'");
+                        if (emailService != null) {
+                            emailService.sendMentionEmail(memberUser, commenter.getName(), task.getTitle(), task.getProject().getName(), task.getProject().getId(), task.getId(), content);
+                        }
                     }
                 }
             }

@@ -1,123 +1,183 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { Routes, Route } from 'react-router-dom';
+import { ScrollToTop } from './components/ScrollToTop';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-import { SignupPage } from './pages/SignupPage';
-import { VerifyOtpPage } from './pages/VerifyOtpPage';
-import { ProjectsDashboardPage } from './pages/ProjectsDashboardPage';
+import { RegisterPage } from './pages/RegisterPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { ProjectBoardPage } from './pages/ProjectBoardPage';
-import { TeamPage } from './pages/TeamPage';
-import { CheckinPage } from './pages/CheckinPage';
-import { AnalyticsPage } from './pages/AnalyticsPage';
-import { AiPlannerPage } from './pages/AiPlannerPage';
-import { CalendarDeadlinesPage } from './pages/CalendarDeadlinesPage';
-import { ProfilePage } from './pages/ProfilePage';
-
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  return <>{children}</>;
-};
+import { ProjectLayout } from './pages/ProjectLayout';
+import { projectTabs } from './components/projects/projectTabs';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ProtectedRoute } from './routes/ProtectedRoute';
+import { PublicOnlyRoute } from './routes/PublicOnlyRoute';
+import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
+import { ProfilePage } from './features/profile/pages/ProfilePage';
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/verify-otp" element={<VerifyOtpPage />} />
+    <>
+      <ScrollToTop />
+      <Routes>
+        {/* Public Landing Page */}
+        <Route path="/" element={<LandingPage />} />
 
-          {/* Core Projects & Templates */}
-          <Route
-            path="/projects"
-            element={
-              <ProtectedRoute>
-                <ProjectsDashboardPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Authentication & Verification Routes (Public Only) */}
+        <Route
+          path="/login"
+          element={
+            <PublicOnlyRoute>
+              <LoginPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicOnlyRoute>
+              <RegisterPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicOnlyRoute>
+              <ForgotPasswordPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicOnlyRoute>
+              <ResetPasswordPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* Route alias for backward compatibility */}
+        <Route path="/verify-otp" element={<VerifyEmailPage />} />
 
-          {/* Module: Kanban Board, Subtasks, Bugs, Tests, Attachments, Comments, History */}
-          <Route
-            path="/projects/:projectId/board"
-            element={
-              <ProtectedRoute>
-                <ProjectBoardPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Profile Routes (Protected) */}
+        <Route
+          path="/app/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
 
-          {/* Module: Team & Member Roles */}
-          <Route
-            path="/projects/:projectId/team"
-            element={
-              <ProtectedRoute>
-                <TeamPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Project Management Dashboard & Board (Protected Routes) */}
+        <Route
+          path="/app/projects"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/app/projects/:projectId"
+          element={
+            <ProtectedRoute>
+              <ProjectLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ProjectBoardPage />} />
+          <Route path="board" element={<ProjectBoardPage />} />
+          {projectTabs.map((tab) =>
+            tab.path && tab.path !== 'board' ? (
+              <Route key={tab.key} path={tab.path} element={tab.element} />
+            ) : null
+          )}
+        </Route>
 
-          {/* Module: Dashboard Analytics & Faculty Performance Reports */}
-          <Route
-            path="/projects/:projectId/dashboard"
-            element={
-              <ProtectedRoute>
-                <AnalyticsPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Notifications Route (Protected) */}
+        <Route
+          path="/app/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
 
-          {/* Module: Groq AI Sprint Planner, Task Recommender & Test Generator */}
-          <Route
-            path="/projects/:projectId/ai-planner"
-            element={
-              <ProtectedRoute>
-                <AiPlannerPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Route aliases for backward compatibility */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects/:id"
+          element={
+            <ProtectedRoute>
+              <ProjectLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ProjectBoardPage />} />
+          <Route path="board" element={<ProjectBoardPage />} />
+          {projectTabs.map((tab) =>
+            tab.path && tab.path !== 'board' ? (
+              <Route key={tab.key} path={tab.path} element={tab.element} />
+            ) : null
+          )}
+        </Route>
+        <Route
+          path="/board/:id"
+          element={
+            <ProtectedRoute>
+              <ProjectLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ProjectBoardPage />} />
+          <Route path="board" element={<ProjectBoardPage />} />
+          {projectTabs.map((tab) =>
+            tab.path && tab.path !== 'board' ? (
+              <Route key={tab.key} path={tab.path} element={tab.element} />
+            ) : null
+          )}
+        </Route>
 
-          {/* Module: Calendar & Upcoming Deadlines Reminders */}
-          <Route
-            path="/projects/:projectId/calendar"
-            element={
-              <ProtectedRoute>
-                <CalendarDeadlinesPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Module: IoT Biometric Lab Check-in */}
-          <Route
-            path="/checkin"
-            element={
-              <ProtectedRoute>
-                <CheckinPage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Module: User Profile */}
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        {/* Catch-all 404 Not Found Page */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </>
   );
 };
 

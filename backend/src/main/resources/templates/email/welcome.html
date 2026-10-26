@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Taskoura</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #f8fafc; padding: 32px 16px; }
+    .container { max-width: 580px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .header { padding: 28px 32px 20px; border-bottom: 1px solid #f1f5f9; }
+    .brand { font-size: 22px; font-weight: 700; color: #0f172a; text-decoration: none; letter-spacing: -0.5px; }
+    .brand span { color: #0284c7; }
+    .body-content { padding: 32px; }
+    h1 { font-size: 22px; font-weight: 700; color: #0f172a; margin: 0 0 16px; }
+    p { font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 20px; }
+    .btn-container { text-align: center; margin: 32px 0; }
+    .btn { display: inline-block; background-color: #0284c7; color: #ffffff !important; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25); }
+    .feature-list { background-color: #f8fafc; border-radius: 8px; padding: 20px 24px; margin: 24px 0; }
+    .feature-item { font-size: 14px; color: #334155; margin-bottom: 8px; }
+    .feature-item:last-child { margin-bottom: 0; }
+    .footer { padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="container" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td class="header">
+          <a th:href="${frontendUrl}" class="brand">Task<span>oura</span></a>
+        </td>
+      </tr>
+      <tr>
+        <td class="body-content">
+          <h1>Welcome to Taskoura!</h1>
+          <p>Hi <strong th:text="${recipientName}">there</strong>,</p>
+          <p>Your account is now fully verified and ready. Taskoura gives engineering teams an intelligent Operating System for managing sprint boards, tracking quality, collaborating in real time, and delivering high-impact projects.</p>
+          
+          <div class="feature-list">
+            <div class="feature-item">🚀 <strong>Create Projects:</strong> Spin up sprint boards, track milestones, and manage tasks.</div>
+            <div class="feature-item">🤝 <strong>Collaborate:</strong> Invite team members, assign tasks, and mention teammates in discussions.</div>
+            <div class="feature-item">⚙️ <strong>Customize Profile:</strong> Personalize your timezone, bio, skills, and notification preferences.</div>
+          </div>
+
+          <div class="btn-container">
+            <a th:href="${dashboardUrl}" class="btn">Go to Your Dashboard</a>
+          </div>
+
+          <p>We're thrilled to have you onboard. Happy building!</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          &copy; <span th:text="${currentYear}">2026</span> Taskoura. All rights reserved.<br>
+          You are receiving this because you signed up for Taskoura.
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

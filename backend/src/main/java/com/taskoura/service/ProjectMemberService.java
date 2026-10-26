@@ -8,27 +8,36 @@ import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectMemberRepository;
 import com.taskoura.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class ProjectMemberService {
 
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
     private final ProjectService projectService;
     private final NotificationService notificationService;
+    private final com.taskoura.repository.UserProfileRepository userProfileRepository;
+    private final EmailService emailService;
 
     public ProjectMemberService(ProjectMemberRepository projectMemberRepository,
                                 UserRepository userRepository,
                                 ProjectService projectService,
-                                NotificationService notificationService) {
+                                NotificationService notificationService,
+                                @Autowired(required = false) com.taskoura.repository.UserProfileRepository userProfileRepository,
+                                @Autowired(required = false) EmailService emailService) {
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
         this.projectService = projectService;
         this.notificationService = notificationService;
+        this.userProfileRepository = userProfileRepository;
+        this.emailService = emailService;
     }
 
     public ProjectMemberResponse inviteMember(UUID projectId, InviteMemberRequest request) {
@@ -53,6 +62,14 @@ public class ProjectMemberService {
         notificationService.logActivity(project, user,
                 "MEMBER_INVITED",
                 user.getName() + " was invited to project \"" + project.getName() + "\" as " + saved.getRole());
+
+        notificationService.createNotification(user,
+                "You have been invited to project \"" + project.getName() + "\" as " + saved.getRole());
+
+        if (emailService != null) {
+            String inviterName = project.getOwner() != null ? project.getOwner().getName() : "Team Lead";
+            emailService.sendProjectInviteEmail(user, inviterName, project.getName(), project.getId(), saved.getRole());
+        }
 
         return toResponse(saved);
     }
@@ -83,12 +100,19 @@ public class ProjectMemberService {
     }
 
     private ProjectMemberResponse toResponse(ProjectMember member) {
+        String avatarUrl = null;
+        if (userProfileRepository != null && member.getUser() != null && member.getUser().getId() != null) {
+            avatarUrl = userProfileRepository.findById(member.getUser().getId())
+                    .map(com.taskoura.entity.UserProfile::getAvatarUrl)
+                    .orElse(null);
+        }
         return new ProjectMemberResponse(
                 member.getId(),
                 member.getUser().getId(),
                 member.getUser().getName(),
                 member.getUser().getEmail(),
-                member.getRole()
+                member.getRole(),
+                avatarUrl
         );
     }
 }

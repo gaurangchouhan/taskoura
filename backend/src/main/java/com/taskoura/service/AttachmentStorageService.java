@@ -11,4 +11,19 @@ public interface AttachmentStorageService {
      * @return file URL
      */
     String uploadFile(MultipartFile file);
+
+    /**
+     * Downloads file content bytes given the storage URL.
+     *
+     * @param fileUrl the file URL
+     * @return file bytes
+     */
+    byte[] downloadFile(String fileUrl);
+
+    /**
+     * Deletes a file from storage provider (best-effort).
+     *
+     * @param fileUrl the file URL
+     */
+    default void deleteFile(String fileUrl) {}
 }

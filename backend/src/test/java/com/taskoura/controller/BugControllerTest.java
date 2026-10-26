@@ -51,6 +51,9 @@ class BugControllerTest {
     @MockitoBean
     private BugService bugService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/tasks/{taskId}/bugs: 201 Created on valid bug report")
     void createBug_success() throws Exception {

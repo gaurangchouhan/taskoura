@@ -6,12 +6,14 @@ import com.taskoura.repository.NotificationRepository;
 import com.taskoura.repository.TaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class DeadlineReminderService {
@@ -21,13 +23,16 @@ public class DeadlineReminderService {
     private final TaskRepository taskRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public DeadlineReminderService(TaskRepository taskRepository,
                                    NotificationRepository notificationRepository,
-                                   NotificationService notificationService) {
+                                   NotificationService notificationService,
+                                   @Autowired(required = false) EmailService emailService) {
         this.taskRepository = taskRepository;
         this.notificationRepository = notificationRepository;
         this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     /**
@@ -59,6 +64,11 @@ public class DeadlineReminderService {
 
             if (!alreadySent) {
                 notificationService.createNotification(assignee, message);
+                if (emailService != null) {
+                    String projectName = task.getProject() != null ? task.getProject().getName() : "Project";
+                    UUID projectId = task.getProject() != null ? task.getProject().getId() : null;
+                    emailService.sendDeadlineReminderEmail(assignee, task.getTitle(), projectName, projectId, task.getId(), task.getDeadline());
+                }
                 sentCount++;
                 log.info("Sent deadline reminder to user {} for task '{}'", assignee.getEmail(), task.getTitle());
             } else {

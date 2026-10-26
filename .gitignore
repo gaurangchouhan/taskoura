@@ -11,11 +11,20 @@ backend/*.class
 backend/.mvn/
 backend/application-local.properties
 backend/application-secret.properties
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-secret.properties
+*application-local.properties
+*application-secret.properties
 
 # ---------- General ----------
 .env
+.env.*
 .DS_Store
 *.log
 .idea/
 .vscode/
 *.iml
+/images/
+/src
+
+

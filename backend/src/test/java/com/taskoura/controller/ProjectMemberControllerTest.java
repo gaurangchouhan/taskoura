@@ -51,6 +51,9 @@ class ProjectMemberControllerTest {
     @MockitoBean
     private ProjectMemberService projectMemberService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/projects/{projectId}/members: 201 Created on valid invite")
     void inviteMember_success() throws Exception {

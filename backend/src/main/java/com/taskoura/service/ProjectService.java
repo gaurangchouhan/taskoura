@@ -8,12 +8,16 @@ import com.taskoura.exception.ForbiddenException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectMemberRepository;
 import com.taskoura.repository.ProjectRepository;
+import com.taskoura.repository.TaskRepository;
 import com.taskoura.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -23,13 +27,16 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final TaskRepository taskRepository;
 
     public ProjectService(ProjectRepository projectRepository,
                           UserRepository userRepository,
-                          ProjectMemberRepository projectMemberRepository) {
+                          ProjectMemberRepository projectMemberRepository,
+                          TaskRepository taskRepository) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.taskRepository = taskRepository;
     }
 
     public ProjectResponse createProject(String ownerEmail, CreateProjectRequest request) {
@@ -56,7 +63,7 @@ public class ProjectService {
                 .build();
         projectMemberRepository.save(ownerMember);
 
-        return toResponse(saved);
+        return toResponse(saved, "Owner");
     }
 
     public List<ProjectResponse> getProjectsForUser(String userEmail) {
@@ -68,14 +75,17 @@ public class ProjectService {
 
         for (Project p : projectRepository.findByOwnerId(user.getId())) {
             if (seenIds.add(p.getId())) {
-                result.add(toResponse(p));
+                result.add(toResponse(p, "Owner"));
             }
         }
 
         for (ProjectMember pm : projectMemberRepository.findByUserId(user.getId())) {
             Project p = pm.getProject();
             if (p != null && seenIds.add(p.getId())) {
-                result.add(toResponse(p));
+                String role = (p.getOwner() != null && p.getOwner().getId().equals(user.getId()))
+                        || "Owner".equalsIgnoreCase(pm.getRole())
+                        ? "Owner" : "Member";
+                result.add(toResponse(p, role));
             }
         }
 
@@ -95,7 +105,31 @@ public class ProjectService {
             throw new ForbiddenException("You do not have access to this project");
         }
 
-        return toResponse(project);
+        String role = isOwner ? "Owner" : "Member";
+
+        return toResponse(project, role);
+    }
+
+    @Transactional
+    public void deleteProject(UUID projectId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new NotFoundException("Project not found"));
+
+        boolean isOwner = project.getOwner() != null && project.getOwner().getId().equals(user.getId());
+        if (!isOwner) {
+            throw new ForbiddenException("Only the project owner can delete this project");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. Soft-delete all its tasks (including subtasks) with a bulk update
+        taskRepository.softDeleteAllByProjectId(projectId, user, now);
+
+        // 2. Soft-delete the project
+        projectRepository.softDeleteProject(projectId, user, now);
     }
 
     public Project getProjectEntityOrThrow(UUID projectId) {
@@ -104,12 +138,17 @@ public class ProjectService {
     }
 
     private ProjectResponse toResponse(Project project) {
+        return toResponse(project, null);
+    }
+
+    private ProjectResponse toResponse(Project project, String role) {
         return new ProjectResponse(
                 project.getId(),
                 project.getName(),
                 project.getDescription(),
                 project.getOwner().getId(),
-                project.getDeadline()
+                project.getDeadline(),
+                role
         );
     }
 }

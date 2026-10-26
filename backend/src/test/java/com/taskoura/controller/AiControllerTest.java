@@ -49,6 +49,9 @@ class AiControllerTest {
     @MockitoBean
     private AiTaskService aiTaskService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/ai/test-cases: 200 OK returns generated test cases")
     void generateTestCases_success() throws Exception {
@@ -124,7 +127,7 @@ class AiControllerTest {
         );
         ConfirmProjectPlanResponse response = new ConfirmProjectPlanResponse(1, List.of(taskId));
 
-        when(aiTaskService.confirmProjectPlan(any())).thenReturn(response);
+        when(aiTaskService.confirmProjectPlan(any(), any())).thenReturn(response);
 
         String token = jwtUtil.generateToken("developer@example.com");
 

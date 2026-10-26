@@ -9,6 +9,9 @@ import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ActivityLogRepository;
 import com.taskoura.repository.NotificationRepository;
 import com.taskoura.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,7 +58,20 @@ public class NotificationService {
     }
 
     public List<ActivityLogResponse> getActivityFeed(UUID projectId) {
-        return activityLogRepository.findByProjectIdOrderByCreatedAtAsc(projectId)
+        return getActivityFeed(projectId, 200);
+    }
+
+    public List<ActivityLogResponse> getActivityFeed(UUID projectId, Integer limit) {
+        int effectiveLimit = 200;
+        if (limit != null) {
+            effectiveLimit = Math.min(500, Math.max(1, limit));
+        }
+        Pageable pageable = PageRequest.of(
+                0,
+                effectiveLimit,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
+        return activityLogRepository.findByProjectIdOrderByCreatedAtDescIdDesc(projectId, pageable)
                 .stream()
                 .map(this::toActivityLogResponse)
                 .toList();
@@ -96,9 +112,9 @@ public class NotificationService {
     private ActivityLogResponse toActivityLogResponse(ActivityLog log) {
         return new ActivityLogResponse(
                 log.getId(),
-                log.getProject().getId(),
-                log.getUser().getId(),
-                log.getUser().getName(),
+                log.getProject() != null ? log.getProject().getId() : null,
+                log.getUser() != null ? log.getUser().getId() : null,
+                log.getUser() != null ? log.getUser().getName() : null,
                 log.getActionType(),
                 log.getDescription(),
                 log.getCreatedAt()
