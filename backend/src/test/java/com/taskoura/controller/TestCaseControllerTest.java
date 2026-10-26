@@ -50,6 +50,9 @@ class TestCaseControllerTest {
     @MockitoBean
     private TestCaseService testCaseService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/tasks/{taskId}/test-cases: 201 Created on valid test case")
     void createTestCase_success() throws Exception {

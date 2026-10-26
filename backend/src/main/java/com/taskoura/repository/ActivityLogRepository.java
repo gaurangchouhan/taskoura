@@ -1,6 +1,7 @@
 package com.taskoura.repository;
 
 import com.taskoura.entity.ActivityLog;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -9,6 +10,8 @@ import java.util.UUID;
 
 @Repository
 public interface ActivityLogRepository extends JpaRepository<ActivityLog, UUID> {
+
+    List<ActivityLog> findByProjectIdOrderByCreatedAtDescIdDesc(UUID projectId, Pageable pageable);
 
     List<ActivityLog> findByProjectIdOrderByCreatedAtAsc(UUID projectId);
 }

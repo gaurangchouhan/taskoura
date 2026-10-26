@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   FolderPlus, 
   Layers, 
@@ -23,6 +24,41 @@ import {
 export const FeatureSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'workflow' | 'qa' | 'ai' | 'analytics'>('workflow');
 
+  useEffect(() => {
+    const syncFromHash = (hashStr: string) => {
+      const clean = hashStr.replace(/^#/, '');
+      if (clean === 'ai' || clean === 'ai-assistance') {
+        setActiveTab('ai');
+      } else if (clean === 'analytics') {
+        setActiveTab('analytics');
+      } else if (clean === 'qa') {
+        setActiveTab('qa');
+      } else if (clean === 'workflow' || clean === 'features') {
+        setActiveTab('workflow');
+      }
+    };
+
+    if (typeof window !== 'undefined' && window.location.hash) {
+      syncFromHash(window.location.hash);
+    }
+
+    const handleSwitch = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      syncFromHash(detail);
+    };
+
+    const handleHashChange = () => {
+      syncFromHash(window.location.hash);
+    };
+
+    window.addEventListener('switch-feature-tab', handleSwitch);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('switch-feature-tab', handleSwitch);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
   const workflowSteps = [
     {
       step: '01',
@@ -34,14 +70,14 @@ export const FeatureSection: React.FC = () => {
     {
       step: '02',
       title: 'Select Technology Stacks',
-      desc: 'Preconfigured templates for Spring Boot, React, Next.js, PostgreSQL, and Cloudinary.',
+      desc: 'Record your frontend, backend, database and testing stack for every project.',
       icon: Layers,
       color: 'from-indigo-500 to-purple-600',
     },
     {
       step: '03',
       title: 'Invite Team & Assign Roles',
-      desc: 'Role-based access controls (Owner, Admin, Member) with secure JWT authenticated sessions.',
+      desc: 'Role-based access controls (Owner and Member) with secure JWT authenticated sessions.',
       icon: Users,
       color: 'from-purple-500 to-pink-600',
     },
@@ -62,7 +98,7 @@ export const FeatureSection: React.FC = () => {
     {
       step: '06',
       title: 'Analyze & Ship with Confidence',
-      desc: 'Executive sprint velocity, member contributions, and test pass/fail audits.',
+      desc: 'Completion progress, member contributions, and test pass/fail audits.',
       icon: BarChart3,
       color: 'from-cyan-500 to-blue-600',
     },
@@ -77,7 +113,7 @@ export const FeatureSection: React.FC = () => {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header: How It Works */}
-        <div id="how-it-works" className="text-center max-w-3xl mx-auto mb-20">
+        <div id="how-it-works" className="text-center max-w-3xl mx-auto mb-20 scroll-mt-24">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-semibold mb-3">
             <Workflow className="w-3.5 h-3.5" />
             <span>Structured Engineering Lifecycle</span>
@@ -176,69 +212,66 @@ export const FeatureSection: React.FC = () => {
           </div>
 
           {/* Tab 1: Project Management */}
-          {activeTab === 'workflow' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-sky-50/60 via-white to-slate-50 border border-sky-100 shadow-lg">
-              <div className="space-y-5">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-bold">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Sprint & Task Orchestration</span>
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900">
-                  Granular task control with parent-child subtasks
-                </h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Break monolithic deliverables into discrete engineering tickets. Assign developers, specify technology category tags, track completion percentages, and manage deadlines without losing the big picture.
-                </p>
-
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center shrink-0 mt-0.5">
-                      <CheckSquare className="w-3 h-3" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">Four-State Kanban Pipeline</h4>
-                      <p className="text-xs text-slate-500">Backlog, In Progress, Review, and Completed stages with automated status logs.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center shrink-0 mt-0.5">
-                      <GitBranch className="w-3 h-3" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">Technology Stack Alignment</h4>
-                      <p className="text-xs text-slate-500">Every card tags its domain: Frontend, Backend, Database, or Testing.</p>
-                    </div>
-                  </div>
-                </div>
+          <div id="workflow" className={`grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-sky-50/60 via-white to-slate-50 border border-sky-100 shadow-lg scroll-mt-24 ${activeTab === 'workflow' ? '' : 'hidden'}`}>
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-100 text-sky-800 text-xs font-bold">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Sprint & Task Orchestration</span>
               </div>
+              <h3 className="text-2xl font-bold text-slate-900">
+                Granular task control with parent-child subtasks
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Break monolithic deliverables into discrete engineering tickets. Assign developers, specify technology category tags, track completion percentages, and manage deadlines without losing the big picture.
+              </p>
 
-              {/* Graphic Mockup */}
-              <div className="rounded-2xl bg-white p-5 border border-slate-200/80 shadow-md space-y-3">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <span className="text-xs font-bold text-slate-800">Parent Task: Payment Gateway Integration</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-sky-100 text-sky-800 rounded-full">3 of 4 Done</span>
+              <div className="space-y-3 pt-2">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckSquare className="w-3 h-3" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">Four-State Kanban Pipeline</h4>
+                    <p className="text-xs text-slate-500">Backlog, In Progress, Testing, and Completed stages with automated status logs.</p>
+                  </div>
                 </div>
-                <div className="space-y-2 text-xs">
-                  <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 flex items-center justify-between">
-                    <span className="text-emerald-900 font-medium">1. Create Stripe Webhook Handler</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">Passed</span>
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <GitBranch className="w-3 h-3" />
                   </div>
-                  <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 flex items-center justify-between">
-                    <span className="text-emerald-900 font-medium">2. Secure API Key & Environment Vars</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">Passed</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-sky-50/80 border border-sky-200 flex items-center justify-between">
-                    <span className="text-sky-900 font-medium">3. Frontend Checkout Modal</span>
-                    <span className="text-[10px] text-sky-700 font-bold">In Progress</span>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800">Technology Stack Alignment</h4>
+                    <p className="text-xs text-slate-500">Every card tags its domain: Frontend, Backend, Database, or Testing.</p>
                   </div>
                 </div>
               </div>
             </div>
-          )}
+
+            {/* Graphic Mockup */}
+            <div className="rounded-2xl bg-white p-5 border border-slate-200/80 shadow-md space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-800">Parent Task: Payment Gateway Integration</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-sky-100 text-sky-800 rounded-full">3 of 4 Done</span>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 flex items-center justify-between">
+                  <span className="text-emerald-900 font-medium">1. Create Stripe Webhook Handler</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">Completed</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-emerald-50/60 border border-emerald-200 flex items-center justify-between">
+                  <span className="text-emerald-900 font-medium">2. Secure API Key & Environment Vars</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">Completed</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-sky-50/80 border border-sky-200 flex items-center justify-between">
+                  <span className="text-sky-900 font-medium">3. Frontend Checkout Modal</span>
+                  <span className="text-[10px] text-sky-700 font-bold">In Progress</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Tab 2: QA & Defect Tracking */}
-          {activeTab === 'qa' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-emerald-50/60 via-white to-slate-50 border border-emerald-100 shadow-lg">
+          <div id="qa" className={`grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-emerald-50/60 via-white to-slate-50 border border-emerald-100 shadow-lg scroll-mt-24 ${activeTab === 'qa' ? '' : 'hidden'}`}>
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
                   <TestTube className="w-3.5 h-3.5" />
@@ -279,12 +312,10 @@ export const FeatureSection: React.FC = () => {
                   PATCH /api/bugs/14/status → Resolved
                 </div>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* Tab 3: AI Planning */}
-          {activeTab === 'ai' && (
-            <div id="ai-assistance" className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-indigo-50/60 via-white to-slate-50 border border-indigo-100 shadow-lg">
+          <div id="ai-assistance" className={`grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-indigo-50/60 via-white to-slate-50 border border-indigo-100 shadow-lg scroll-mt-24 ${activeTab === 'ai' ? '' : 'hidden'}`}>
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -324,12 +355,10 @@ export const FeatureSection: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* Tab 4: Analytics & Reports */}
-          {activeTab === 'analytics' && (
-            <div id="analytics" className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-cyan-50/60 via-white to-slate-50 border border-cyan-100 shadow-lg">
+          <div id="analytics" className={`grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-8 rounded-3xl bg-gradient-to-br from-cyan-50/60 via-white to-slate-50 border border-cyan-100 shadow-lg scroll-mt-24 ${activeTab === 'analytics' ? '' : 'hidden'}`}>
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 text-xs font-bold">
                   <BarChart3 className="w-3.5 h-3.5" />
@@ -383,8 +412,7 @@ export const FeatureSection: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Final CTA Strip */}
@@ -398,18 +426,18 @@ export const FeatureSection: React.FC = () => {
               Join students and engineering squads building reliable software on Taskoura today.
             </p>
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a
-                href="/register"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white text-sky-700 font-bold text-sm shadow-md hover:bg-sky-50 transition-colors"
+              <Link
+                to="/register"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white text-sky-700 font-bold text-sm shadow-md hover:bg-sky-50 transition-colors text-center"
               >
                 Create Free Project
-              </a>
-              <a
-                href="/login"
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-sky-700/60 hover:bg-sky-700 text-white font-semibold text-sm border border-sky-400/40 transition-colors"
+              </Link>
+              <Link
+                to="/login"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-sky-700/60 hover:bg-sky-700 text-white font-semibold text-sm border border-sky-400/40 transition-colors text-center"
               >
                 Sign In to Workspace
-              </a>
+              </Link>
             </div>
           </div>
         </div>

@@ -13,6 +13,11 @@ public class ProjectMemberDtos {
             UUID userId,
             String userName,
             String userEmail,
-            String role
-    ) {}
+            String role,
+            String avatarUrl
+    ) {
+        public ProjectMemberResponse(UUID id, UUID userId, String userName, String userEmail, String role) {
+            this(id, userId, userName, userEmail, role, null);
+        }
+    }
 }

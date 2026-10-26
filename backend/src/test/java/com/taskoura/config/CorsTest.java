@@ -12,11 +12,16 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import com.taskoura.service.SessionService;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import java.time.Clock;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(HealthController.class)
-@Import({SecurityConfig.class, JwtAuthFilter.class, JwtUtil.class})
+@Import({SecurityConfig.class, JwtAuthFilter.class, JwtUtil.class, ClockConfig.class})
 @TestPropertySource(properties = {
     "jwt.secret=taskoura-super-secret-test-jwt-key-256-bits-length!!",
     "jwt.expiration-ms=86400000"
@@ -25,6 +30,9 @@ class CorsTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private SessionService sessionService;
 
     @Test
     @DisplayName("CORS Preflight: OPTIONS request from localhost:5173 is allowed with 200 OK")

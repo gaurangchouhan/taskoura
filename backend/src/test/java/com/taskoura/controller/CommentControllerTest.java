@@ -53,6 +53,9 @@ class CommentControllerTest {
     @MockitoBean
     private CommentService commentService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/tasks/{taskId}/comments: 201 Created on valid comment")
     void addComment_success() throws Exception {

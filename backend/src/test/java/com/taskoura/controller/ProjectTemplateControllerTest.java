@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,6 +43,9 @@ class ProjectTemplateControllerTest {
 
     @MockitoBean
     private ProjectTemplateService projectTemplateService;
+
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
 
     @Test
     @DisplayName("GET /api/templates: 200 OK with available templates list")
@@ -71,7 +76,7 @@ class ProjectTemplateControllerTest {
                 14, List.of(UUID.randomUUID(), UUID.randomUUID())
         );
 
-        when(projectTemplateService.applyTemplate(projectId, "e-commerce-website")).thenReturn(mockResponse);
+        when(projectTemplateService.applyTemplate(eq(projectId), eq("e-commerce-website"), any())).thenReturn(mockResponse);
 
         mockMvc.perform(post("/api/projects/{projectId}/templates/{templateKey}/apply", projectId, "e-commerce-website")
                         .header("Authorization", "Bearer " + token))
@@ -86,7 +91,7 @@ class ProjectTemplateControllerTest {
         UUID projectId = UUID.randomUUID();
         String token = jwtUtil.generateToken("user@test.com");
 
-        when(projectTemplateService.applyTemplate(projectId, "unknown-template"))
+        when(projectTemplateService.applyTemplate(eq(projectId), eq("unknown-template"), any()))
                 .thenThrow(new NotFoundException("Template not found: unknown-template"));
 
         mockMvc.perform(post("/api/projects/{projectId}/templates/{templateKey}/apply", projectId, "unknown-template")

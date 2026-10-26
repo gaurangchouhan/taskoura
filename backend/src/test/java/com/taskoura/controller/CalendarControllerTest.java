@@ -41,6 +41,9 @@ class CalendarControllerTest {
     @MockitoBean
     private CalendarService calendarService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("GET /api/projects/{projectId}/calendar: 200 OK with calendar days")
     void getCalendar_success() throws Exception {

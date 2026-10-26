@@ -137,7 +137,7 @@ class NotificationServiceTest {
                 .description("Task X was created")
                 .createdAt(LocalDateTime.now())
                 .build();
-        when(activityLogRepository.findByProjectIdOrderByCreatedAtAsc(testProject.getId()))
+        when(activityLogRepository.findByProjectIdOrderByCreatedAtDescIdDesc(eq(testProject.getId()), any()))
                 .thenReturn(List.of(log));
 
         List<ActivityLogResponse> result = notificationService.getActivityFeed(testProject.getId());

@@ -1,15 +1,14 @@
 package com.taskoura.controller;
 
+import com.taskoura.dto.ProfileDtos.AvatarResponse;
+import com.taskoura.dto.ProfileDtos.UpdateProfileDetailsRequest;
 import com.taskoura.dto.ProfileDtos.UpdateProfileRequest;
 import com.taskoura.dto.ProfileDtos.UserProfileResponse;
 import com.taskoura.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/users")
@@ -32,5 +31,27 @@ public class UserController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(userService.updateProfile(authentication.getName(), request));
+    }
+
+    @PutMapping("/me/profile")
+    public ResponseEntity<UserProfileResponse> updateProfileDetails(
+            @RequestBody UpdateProfileDetailsRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(userService.updateProfileDetails(authentication.getName(), request));
+    }
+
+    @PostMapping("/me/avatar")
+    public ResponseEntity<AvatarResponse> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(userService.uploadAvatar(authentication.getName(), file));
+    }
+
+    @DeleteMapping("/me/avatar")
+    public ResponseEntity<Void> deleteAvatar(Authentication authentication) {
+        userService.deleteAvatar(authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

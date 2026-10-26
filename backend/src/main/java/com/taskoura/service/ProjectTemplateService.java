@@ -4,7 +4,10 @@ import com.taskoura.dto.TemplateDtos.*;
 import com.taskoura.entity.Project;
 import com.taskoura.entity.Task;
 import com.taskoura.exception.NotFoundException;
+import com.taskoura.entity.User;
 import com.taskoura.repository.TaskRepository;
+import com.taskoura.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,11 +35,19 @@ public class ProjectTemplateService {
 
     private final ProjectService projectService;
     private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
     private final Map<String, TemplateDefinition> templates = new LinkedHashMap<>();
 
     public ProjectTemplateService(ProjectService projectService, TaskRepository taskRepository) {
+        this(projectService, taskRepository, null);
+    }
+
+    @Autowired
+    public ProjectTemplateService(ProjectService projectService, TaskRepository taskRepository,
+                                  @Autowired(required = false) UserRepository userRepository) {
         this.projectService = projectService;
         this.taskRepository = taskRepository;
+        this.userRepository = userRepository;
         initTemplates();
     }
 
@@ -218,8 +229,12 @@ public class ProjectTemplateService {
         return new TemplateListResponse(summaries);
     }
 
-    @Transactional
     public ApplyTemplateResponse applyTemplate(UUID projectId, String templateKey) {
+        return applyTemplate(projectId, templateKey, null);
+    }
+
+    @Transactional
+    public ApplyTemplateResponse applyTemplate(UUID projectId, String templateKey, String creatorEmail) {
         Project project = projectService.getProjectEntityOrThrow(projectId);
 
         if (templateKey == null || templateKey.isBlank()) {
@@ -229,6 +244,11 @@ public class ProjectTemplateService {
         TemplateDefinition template = templates.get(templateKey.toLowerCase(Locale.ROOT).trim());
         if (template == null) {
             throw new NotFoundException("Template not found: " + templateKey);
+        }
+
+        User creator = null;
+        if (creatorEmail != null && !creatorEmail.isBlank() && userRepository != null) {
+            creator = userRepository.findByEmail(creatorEmail).orElse(null);
         }
 
         List<UUID> createdTaskIds = new ArrayList<>();
@@ -241,6 +261,7 @@ public class ProjectTemplateService {
                         .category(item.category())
                         .priority(item.priority())
                         .status("Backlog")
+                        .createdBy(creator)
                         .build();
                 Task saved = taskRepository.save(task);
                 createdTaskIds.add(saved.getId());

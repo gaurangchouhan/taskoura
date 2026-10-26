@@ -38,7 +38,7 @@ class ProfileAndResetPasswordIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
-    @MockitoBean private JavaMailSender mailSender;
+    @MockitoBean private EmailService emailService;
 
     private User verifiedUser;
     private User unverifiedUser;
@@ -106,15 +106,20 @@ class ProfileAndResetPasswordIntegrationTest {
         // 1. Request reset OTP
         authService.forgotPassword(new ForgotPasswordRequest(verifiedUser.getEmail()));
 
+        org.mockito.ArgumentCaptor<String> otpCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(emailService).sendPasswordResetEmail(org.mockito.ArgumentMatchers.eq(verifiedUser.getEmail()), org.mockito.ArgumentMatchers.any(), otpCaptor.capture());
+        String rawOtp = otpCaptor.getValue();
+        assertThat(rawOtp).isNotNull().hasSize(4);
+
         User userAfterOtp = userRepository.findById(verifiedUser.getId()).orElseThrow();
-        String generatedOtp = userAfterOtp.getResetOtpCode();
-        assertThat(generatedOtp).isNotNull().hasSize(4);
+        // Hashing at rest: DB stores 64-character HMAC-SHA256 hex string, not the raw 4-digit code
+        assertThat(userAfterOtp.getResetOtpCode()).isNotNull().isNotEqualTo(rawOtp).hasSize(64);
         assertThat(userAfterOtp.getResetOtpExpiresAt()).isAfter(LocalDateTime.now());
 
         // 2. Reset password with generated OTP
         String newPassword = "NewSecretPassword123!";
         MessageResponse resetResponse = authService.resetPassword(
-                new ResetPasswordRequest(verifiedUser.getEmail(), generatedOtp, newPassword)
+                new ResetPasswordRequest(verifiedUser.getEmail(), rawOtp, newPassword)
         );
         assertThat(resetResponse.message()).isEqualTo("Password reset successfully. You can now log in with your new password.");
 
@@ -141,7 +146,7 @@ class ProfileAndResetPasswordIntegrationTest {
 
         // Wrong OTP
         assertThatThrownBy(() -> authService.resetPassword(
-                new ResetPasswordRequest(verifiedUser.getEmail(), "000000", "someNewPass")))
+                new ResetPasswordRequest(verifiedUser.getEmail(), "9999", "someNewPass")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Invalid or expired reset code");
 
@@ -151,7 +156,7 @@ class ProfileAndResetPasswordIntegrationTest {
         userRepository.save(user);
 
         assertThatThrownBy(() -> authService.resetPassword(
-                new ResetPasswordRequest(verifiedUser.getEmail(), user.getResetOtpCode(), "someNewPass")))
+                new ResetPasswordRequest(verifiedUser.getEmail(), "9999", "someNewPass")))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Invalid or expired reset code");
     }

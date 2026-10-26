@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskoura.config.SecurityConfig;
 import com.taskoura.dto.TaskDtos.CreateTaskRequest;
 import com.taskoura.dto.TaskDtos.TaskResponse;
+import com.taskoura.dto.TaskDtos.UpdateTaskRequest;
 import com.taskoura.dto.TaskDtos.UpdateTaskStatusRequest;
 import com.taskoura.dto.TaskStatusLogDtos.TaskStatusLogResponse;
 import com.taskoura.exception.GlobalExceptionHandler;
@@ -54,6 +55,9 @@ class TaskControllerTest {
     @MockitoBean
     private TaskService taskService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/projects/{projectId}/tasks: 201 Created on valid task creation")
     void createTask_success() throws Exception {
@@ -67,7 +71,7 @@ class TaskControllerTest {
                 taskId, "Design Architecture", "Backend", "High", "Backlog", null, request.deadline(), null
         );
 
-        when(taskService.createTask(eq(projectId), any(CreateTaskRequest.class))).thenReturn(response);
+        when(taskService.createTask(eq(projectId), any(CreateTaskRequest.class), any())).thenReturn(response);
 
         String token = jwtUtil.generateToken("developer@example.com");
 
@@ -80,7 +84,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.title").value("Design Architecture"))
                 .andExpect(jsonPath("$.status").value("Backlog"));
 
-        verify(taskService).createTask(eq(projectId), any(CreateTaskRequest.class));
+        verify(taskService).createTask(eq(projectId), any(CreateTaskRequest.class), any());
     }
 
     @Test
@@ -91,7 +95,7 @@ class TaskControllerTest {
                 "Design Architecture", "System design doc", "Backend", "High", null, LocalDate.now()
         );
 
-        when(taskService.createTask(eq(projectId), any(CreateTaskRequest.class)))
+        when(taskService.createTask(eq(projectId), any(CreateTaskRequest.class), any()))
                 .thenThrow(new NotFoundException("Project not found"));
 
         String token = jwtUtil.generateToken("developer@example.com");
@@ -181,7 +185,7 @@ class TaskControllerTest {
                 request.assignedTo(), request.deadline(), null, parentTaskId, 0
         );
 
-        when(taskService.createSubtask(eq(parentTaskId), any(CreateTaskRequest.class))).thenReturn(response);
+        when(taskService.createSubtask(eq(parentTaskId), any(CreateTaskRequest.class), any())).thenReturn(response);
 
         String token = jwtUtil.generateToken("developer@example.com");
 
@@ -243,5 +247,44 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.id").value(taskId.toString()))
                 .andExpect(jsonPath("$.title").value("Single Task"))
                 .andExpect(jsonPath("$.subtaskCount").value(2));
+    }
+
+    @Test
+    @DisplayName("PUT /api/tasks/{taskId}: 200 OK returns updated task")
+    void updateTask_success() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "Edited Task", "Edited Desc", "Frontend", "High", null, LocalDate.now().plusDays(7)
+        );
+
+        TaskResponse response = new TaskResponse(
+                taskId, "Edited Task", "Frontend", "High", "Backlog",
+                null, request.deadline(), null, null, 0
+        );
+
+        when(taskService.updateTask(eq(taskId), any(UpdateTaskRequest.class), any())).thenReturn(response);
+        String token = jwtUtil.generateToken("developer@example.com");
+
+        mockMvc.perform(put("/api/tasks/{taskId}", taskId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(taskId.toString()))
+                .andExpect(jsonPath("$.title").value("Edited Task"))
+                .andExpect(jsonPath("$.priority").value("High"));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/tasks/{taskId}: 204 No Content when deleted")
+    void deleteTask_success() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        String token = jwtUtil.generateToken("developer@example.com");
+
+        mockMvc.perform(delete("/api/tasks/{taskId}", taskId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        verify(taskService).deleteTask(eq(taskId), any());
     }
 }

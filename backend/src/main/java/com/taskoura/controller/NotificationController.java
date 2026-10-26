@@ -14,11 +14,14 @@ public class NotificationController {
 
     private final NotificationService notificationService;
     private final com.taskoura.service.DeadlineReminderService deadlineReminderService;
+    private final com.taskoura.service.ProjectAccessService projectAccessService;
 
     public NotificationController(NotificationService notificationService,
-                                  com.taskoura.service.DeadlineReminderService deadlineReminderService) {
+                                  com.taskoura.service.DeadlineReminderService deadlineReminderService,
+                                  com.taskoura.service.ProjectAccessService projectAccessService) {
         this.notificationService = notificationService;
         this.deadlineReminderService = deadlineReminderService;
+        this.projectAccessService = projectAccessService;
     }
 
     @GetMapping("/api/notifications")
@@ -40,9 +43,13 @@ public class NotificationController {
 
     @GetMapping("/api/projects/{projectId}/activity")
     public ResponseEntity<List<ActivityLogResponse>> getActivityFeed(
-            @PathVariable UUID projectId
+            @PathVariable UUID projectId,
+            @RequestParam(required = false, defaultValue = "200") Integer limit,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(notificationService.getActivityFeed(projectId));
+        String email = authentication != null ? authentication.getName() : null;
+        projectAccessService.requireMember(projectId, email);
+        return ResponseEntity.ok(notificationService.getActivityFeed(projectId, limit));
     }
 
     @PostMapping("/api/reminders/trigger")

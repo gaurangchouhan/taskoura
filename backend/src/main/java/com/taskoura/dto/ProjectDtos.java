@@ -20,6 +20,11 @@ public class ProjectDtos {
             String name,
             String description,
             UUID ownerId,
-            LocalDate deadline
-    ) {}
+            LocalDate deadline,
+            String role
+    ) {
+        public ProjectResponse(UUID id, String name, String description, UUID ownerId, LocalDate deadline) {
+            this(id, name, description, ownerId, deadline, null);
+        }
+    }
 }

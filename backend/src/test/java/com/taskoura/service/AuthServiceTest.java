@@ -46,6 +46,9 @@ class AuthServiceTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private SessionService sessionService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -161,13 +164,28 @@ class AuthServiceTest {
         sampleUser.setVerified(true);
         when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
         when(passwordEncoder.matches("Password123!", "encoded_hash")).thenReturn(true);
-        when(jwtUtil.generateToken("alex@example.com")).thenReturn("mock-jwt-token");
+
+        com.taskoura.entity.UserSession mockSession = com.taskoura.entity.UserSession.builder()
+                .id(UUID.randomUUID())
+                .user(sampleUser)
+                .createdAt(java.time.Instant.now())
+                .lastActivityAt(java.time.Instant.now())
+                .absoluteExpiresAt(java.time.Instant.now().plusSeconds(3600))
+                .build();
+
+        when(sessionService.createSession(eq(sampleUser), any())).thenReturn(mockSession);
+        when(jwtUtil.generateToken(eq("alex@example.com"), eq(mockSession.getId()), any())).thenReturn("mock-jwt-token");
+        when(sessionService.buildSessionInfo(eq(mockSession))).thenReturn(
+                new com.taskoura.dto.SessionInfoResponse(1800, 120, "2026-10-25T12:00:00Z", "2026-10-25T18:00:00Z", "2026-10-25T11:30:00Z")
+        );
 
         AuthResponse response = authService.login(request);
 
         assertThat(response.token()).isEqualTo("mock-jwt-token");
         assertThat(response.user().email()).isEqualTo("alex@example.com");
         assertThat(response.user().name()).isEqualTo("Alex Doe");
+        assertThat(response.session()).isNotNull();
+        assertThat(response.session().idleTimeoutSeconds()).isEqualTo(1800);
     }
 
     @Test
@@ -283,5 +301,6 @@ class AuthServiceTest {
         assertThat(sampleUser.getResetOtpCode()).isNull();
         assertThat(sampleUser.getResetOtpExpiresAt()).isNull();
         verify(userRepository).save(sampleUser);
+        verify(sessionService).revokeAllUserSessions(sampleUser.getId());
     }
 }

@@ -3,9 +3,13 @@ package com.taskoura.service;
 import com.taskoura.dto.AiDtos.*;
 import com.taskoura.entity.Project;
 import com.taskoura.entity.Task;
+import com.taskoura.entity.User;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectRepository;
 import com.taskoura.repository.TaskRepository;
+import com.taskoura.repository.UserRepository;
+import com.taskoura.validation.TaskValidation;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +26,8 @@ public class AiTaskService {
     private final GrokClient grokClient;
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     // In-memory 5-minute TTL cache
     private final Map<String, CacheEntry<Object>> cache = new ConcurrentHashMap<>();
@@ -34,9 +40,25 @@ public class AiTaskService {
     }
 
     public AiTaskService(GrokClient grokClient, TaskRepository taskRepository, ProjectRepository projectRepository) {
+        this(grokClient, taskRepository, projectRepository, null, null);
+    }
+
+    public AiTaskService(GrokClient grokClient, TaskRepository taskRepository,
+                         ProjectRepository projectRepository,
+                         UserRepository userRepository) {
+        this(grokClient, taskRepository, projectRepository, userRepository, null);
+    }
+
+    @Autowired
+    public AiTaskService(GrokClient grokClient, TaskRepository taskRepository,
+                         ProjectRepository projectRepository,
+                         @Autowired(required = false) UserRepository userRepository,
+                         @Autowired(required = false) NotificationService notificationService) {
         this.grokClient = grokClient;
         this.taskRepository = taskRepository;
         this.projectRepository = projectRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public GenerateTestCasesResponse generateTestCases(UUID taskId) {
@@ -79,28 +101,54 @@ public class AiTaskService {
         return response;
     }
 
-    @Transactional
     public ConfirmProjectPlanResponse confirmProjectPlan(ConfirmProjectPlanRequest request) {
+        return confirmProjectPlan(request, null);
+    }
+
+    @Transactional
+    public ConfirmProjectPlanResponse confirmProjectPlan(ConfirmProjectPlanRequest request, String creatorEmail) {
+        TaskValidation.validatePlan(request);
+
         Project project = projectRepository.findById(request.projectId())
                 .orElseThrow(() -> new NotFoundException("Project not found"));
+
+        User creator = null;
+        if (creatorEmail != null && !creatorEmail.isBlank() && userRepository != null) {
+            creator = userRepository.findByEmail(creatorEmail).orElse(null);
+        }
 
         List<UUID> createdTaskIds = new ArrayList<>();
         if (request.modules() != null) {
             for (PlanModule module : request.modules()) {
-                if (module.tasks() != null) {
+                if (module != null && module.tasks() != null) {
                     for (PlanTask planTask : module.tasks()) {
+                        String canonicalCategory = TaskValidation.normalizeCategory(planTask.category());
+                        String canonicalPriority = TaskValidation.normalizePriority(planTask.priority());
+
                         Task task = Task.builder()
                                 .project(project)
-                                .title(planTask.title())
-                                .category(planTask.category() != null ? planTask.category() : "General")
-                                .priority(planTask.priority() != null ? planTask.priority() : "Medium")
+                                .title(planTask.title().trim())
+                                .description(planTask.description())
+                                .category(canonicalCategory)
+                                .priority(canonicalPriority)
                                 .status("Backlog")
+                                .createdBy(creator)
                                 .build();
                         Task saved = taskRepository.save(task);
                         createdTaskIds.add(saved.getId());
                     }
                 }
             }
+        }
+
+        if (notificationService != null && !createdTaskIds.isEmpty()) {
+            User activityActor = creator != null ? creator : project.getOwner();
+            notificationService.logActivity(
+                    project,
+                    activityActor,
+                    "TASKS_ADDED_FROM_AI",
+                    "Added " + createdTaskIds.size() + " tasks from AI plan"
+            );
         }
 
         return new ConfirmProjectPlanResponse(createdTaskIds.size(), createdTaskIds);

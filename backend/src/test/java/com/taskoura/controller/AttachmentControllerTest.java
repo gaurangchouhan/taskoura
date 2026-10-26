@@ -46,6 +46,9 @@ class AttachmentControllerTest {
     @MockitoBean
     private AttachmentService attachmentService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("POST /api/tasks/{taskId}/attachments: 201 Created on successful upload")
     void uploadAttachment_success() throws Exception {

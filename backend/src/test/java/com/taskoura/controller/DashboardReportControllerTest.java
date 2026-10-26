@@ -43,6 +43,9 @@ class DashboardReportControllerTest {
     @MockitoBean
     private DashboardReportService dashboardReportService;
 
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
+
     @Test
     @DisplayName("GET /api/projects/{projectId}/dashboard: 200 OK with dashboard response")
     void getDashboard_success() throws Exception {

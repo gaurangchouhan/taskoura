@@ -8,7 +8,10 @@ import com.taskoura.entity.Project;
 import com.taskoura.entity.Task;
 import com.taskoura.entity.TaskStatusLog;
 import com.taskoura.entity.User;
+import com.taskoura.dto.TaskDtos.UpdateTaskRequest;
+import com.taskoura.exception.ForbiddenException;
 import com.taskoura.exception.NotFoundException;
+import com.taskoura.exception.ValidationException;
 import com.taskoura.repository.TaskRepository;
 import com.taskoura.repository.TaskStatusLogRepository;
 import com.taskoura.repository.UserRepository;
@@ -48,6 +51,9 @@ class TaskServiceTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private ProjectAccessService projectAccessService;
 
     @InjectMocks
     private TaskService taskService;
@@ -324,5 +330,107 @@ class TaskServiceTest {
         assertThatThrownBy(() -> taskService.getTaskById(taskId))
                 .isInstanceOf(com.taskoura.exception.NotFoundException.class)
                 .hasMessage("Task not found");
+    }
+
+    @Test
+    @DisplayName("updateTask: updates fields and sets updatedAt and updatedBy when fields change")
+    void updateTask_fieldsChanged_updatesTask() {
+        UUID taskId = UUID.randomUUID();
+        User editor = User.builder().id(UUID.randomUUID()).name("Editor").email("editor@example.com").build();
+        Task existing = Task.builder()
+                .id(taskId)
+                .title("Old Title")
+                .description("Old Desc")
+                .category("Backend")
+                .priority("Low")
+                .project(project)
+                .status("Backlog")
+                .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(existing));
+        when(userRepository.findByEmail(editor.getEmail())).thenReturn(Optional.of(editor));
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "New Title", "New Desc", "Frontend", "High", null, LocalDate.now().plusDays(3)
+        );
+
+        TaskResponse res = taskService.updateTask(taskId, request, editor.getEmail());
+
+        assertThat(res.title()).isEqualTo("New Title");
+        assertThat(res.description()).isEqualTo("New Desc");
+        assertThat(res.category()).isEqualTo("Frontend");
+        assertThat(res.priority()).isEqualTo("High");
+        assertThat(res.updatedAt()).isNotNull();
+        assertThat(res.updatedBy().name()).isEqualTo("Editor");
+        verify(notificationService).logActivity(eq(project), eq(editor), eq("TASK_UPDATED"), contains("edited task 'New Title'"));
+    }
+
+    @Test
+    @DisplayName("updateTask: no changes leaves updatedAt null and skips activity log")
+    void updateTask_noChanges_leavesUpdatedAtNull() {
+        UUID taskId = UUID.randomUUID();
+        User editor = User.builder().id(UUID.randomUUID()).name("Editor").email("editor@example.com").build();
+        Task existing = Task.builder()
+                .id(taskId)
+                .title("Identical Title")
+                .description("Identical Desc")
+                .category("Backend")
+                .priority("Low")
+                .project(project)
+                .status("Backlog")
+                .build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(existing));
+        when(userRepository.findByEmail(editor.getEmail())).thenReturn(Optional.of(editor));
+
+        UpdateTaskRequest request = new UpdateTaskRequest(
+                "Identical Title", "Identical Desc", "Backend", "Low", null, null
+        );
+
+        TaskResponse res = taskService.updateTask(taskId, request, editor.getEmail());
+
+        assertThat(res.updatedAt()).isNull();
+        verify(taskRepository, never()).save(any());
+        verify(notificationService, never()).logActivity(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("deleteTask: Owner allowed to delete task and cascade subtasks")
+    void deleteTask_ownerAllowed() {
+        UUID taskId = UUID.randomUUID();
+        User ownerUser = User.builder().id(UUID.randomUUID()).name("Owner").email("owner@example.com").build();
+        Task parent = Task.builder().id(taskId).title("Parent Task").project(project).build();
+        Task subtask = Task.builder().id(UUID.randomUUID()).title("Subtask").project(project).parentTask(parent).build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(parent));
+        when(userRepository.findByEmail(ownerUser.getEmail())).thenReturn(Optional.of(ownerUser));
+        when(projectAccessService.findRole(project.getId(), ownerUser.getEmail())).thenReturn(Optional.of("Owner"));
+        when(taskRepository.findByParentTaskId(taskId)).thenReturn(List.of(subtask));
+
+        taskService.deleteTask(taskId, ownerUser.getEmail());
+
+        verify(taskRepository).delete(subtask);
+        verify(taskRepository).delete(parent);
+        verify(notificationService).logActivity(eq(project), eq(ownerUser), eq("TASK_DELETED"), contains("deleted task 'Parent Task'"));
+    }
+
+    @Test
+    @DisplayName("deleteTask: non-creator member throws ForbiddenException (403)")
+    void deleteTask_nonCreatorMember_throwsForbidden() {
+        UUID taskId = UUID.randomUUID();
+        User creator = User.builder().id(UUID.randomUUID()).name("Creator").email("creator@example.com").build();
+        User otherMember = User.builder().id(UUID.randomUUID()).name("Other").email("other@example.com").build();
+        Task task = Task.builder().id(taskId).title("Task").project(project).createdBy(creator).build();
+
+        when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+        when(userRepository.findByEmail(otherMember.getEmail())).thenReturn(Optional.of(otherMember));
+        when(projectAccessService.findRole(project.getId(), otherMember.getEmail())).thenReturn(Optional.of("Member"));
+
+        assertThatThrownBy(() -> taskService.deleteTask(taskId, otherMember.getEmail()))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Only the project owner or the task creator can delete this task");
+
+        verify(taskRepository, never()).delete(any());
     }
 }

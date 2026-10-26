@@ -150,6 +150,17 @@ public class AttachmentService {
         }
     }
 
+    public byte[] getAttachmentBytes(UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new NotFoundException("Attachment not found"));
+        return attachmentStorageService.downloadFile(attachment.getFileUrl());
+    }
+
+    public Attachment getAttachmentEntity(UUID attachmentId) {
+        return attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new NotFoundException("Attachment not found"));
+    }
+
     private AttachmentResponse toResponse(Attachment attachment) {
         return new AttachmentResponse(
                 attachment.getId(),

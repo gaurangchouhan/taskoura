@@ -9,15 +9,21 @@ import {
   Calendar, 
   AlertCircle,
   Clock,
-  Layers
+  Layers,
+  Loader2
 } from 'lucide-react';
 import { Task, TaskCategory, Priority } from '../types';
+import { ProjectMember } from '../types/member';
+import { Avatar } from './common/Avatar';
 
-interface TaskCardProps {
+export interface TaskCardProps {
   task: Task;
   compact?: boolean;
   className?: string;
   isFloating?: boolean;
+  memberMap?: Map<string, ProjectMember>;
+  onClick?: () => void;
+  isUpdating?: boolean;
 }
 
 export const categoryConfig: Record<
@@ -97,43 +103,70 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   compact = false,
   className = '',
   isFloating = false,
+  memberMap,
+  onClick,
+  isUpdating = false,
 }) => {
   const cat = categoryConfig[task.category] || categoryConfig.Frontend;
   const pri = priorityConfig[task.priority] || priorityConfig.Medium;
   const CategoryIcon = cat.icon;
 
-  const initials = task.assignedToName
-    ? task.assignedToName
+  // Resolve assignee name from useMemberMap or fallback
+  const member = task.assignedTo && memberMap ? memberMap.get(task.assignedTo) : undefined;
+  const assigneeName = member?.userName || task.assignedToName || 'Unassigned';
+  const avatarUrl = member?.avatarUrl || task.assignedToAvatar;
+
+  const initials = assigneeName && assigneeName !== 'Unassigned'
+    ? assigneeName
         .split(' ')
+        .filter(Boolean)
         .map((n) => n[0])
         .join('')
         .toUpperCase()
         .slice(0, 2)
-    : 'TK';
+    : 'U';
+
+  // Check overdue: deadline before today and status not Completed
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isOverdue = Boolean(
+    task.deadline && task.status !== 'Completed' && task.deadline < todayStr
+  );
 
   return (
     <div
+      data-testid={`task-card-${task.id}`}
+      onClick={onClick}
       className={`relative rounded-xl bg-white border border-slate-200/90 transition-all duration-200 ${
         isFloating
           ? 'shadow-xl shadow-sky-500/10 border-sky-300 ring-2 ring-sky-400/20'
           : 'shadow-sm hover:shadow-md hover:border-slate-300'
-      } ${compact ? 'p-2.5' : 'p-3.5'} ${className}`}
+      } ${compact ? 'p-2.5' : 'p-3.5'} ${onClick ? 'cursor-pointer' : ''} ${
+        isUpdating ? 'opacity-60 pointer-events-none' : ''
+      } ${className}`}
       style={{
         borderLeftWidth: '4px',
         borderLeftColor: cat.accent,
       }}
     >
+      {/* Updating indicator */}
+      {isUpdating && (
+        <div className="absolute top-2 right-2 flex items-center gap-1 text-xs text-sky-600 font-semibold bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <span>Updating...</span>
+        </div>
+      )}
+
       {/* Header: Category Badge + Priority */}
-      <div className="flex items-center justify-between gap-1.5 mb-2">
+      <div className="flex items-center justify-between gap-2 mb-2">
         <span
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cat.bg} ${cat.text} ${cat.border}`}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cat.bg} ${cat.text} ${cat.border}`}
         >
-          <CategoryIcon className="w-2.5 h-2.5" />
+          <CategoryIcon className="w-3 h-3" />
           <span>{cat.label}</span>
         </span>
 
         <span
-          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${pri.badge}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${pri.badge}`}
         >
           {pri.label}
         </span>
@@ -141,7 +174,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
       {/* Task Title */}
       <h4
-        className={`font-semibold text-slate-800 tracking-tight leading-snug line-clamp-2 ${
+        className={`font-semibold text-slate-900 tracking-tight leading-snug line-clamp-2 ${
           compact ? 'text-xs mb-1.5' : 'text-sm mb-2.5'
         }`}
       >
@@ -151,7 +184,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       {/* Optional Progress Bar */}
       {typeof task.progress === 'number' && (
         <div className="mb-2.5">
-          <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium mb-1">
+          <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
             <span>Progress</span>
             <span>{task.progress}%</span>
           </div>
@@ -168,35 +201,54 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       )}
 
       {/* Footer Info: Deadline, Subtasks, Assignee */}
-      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500">
+      <div className="flex items-center justify-between pt-1 text-xs text-slate-500">
         <div className="flex items-center gap-2">
           {task.deadline && (
-            <span className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
-              <Calendar className="w-3 h-3 text-slate-400" />
+            <span
+              data-testid={isOverdue ? 'overdue-deadline' : 'task-deadline'}
+              className={`flex items-center gap-1 text-xs font-medium ${
+                isOverdue
+                  ? 'text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200'
+                  : 'text-slate-500'
+              }`}
+            >
+              <Calendar
+                className={`w-3.5 h-3.5 ${isOverdue ? 'text-rose-500' : 'text-slate-400'}`}
+              />
               <span>{task.deadline}</span>
             </span>
           )}
 
           {typeof task.subtaskCount === 'number' && task.subtaskCount > 0 && (
-            <span className="flex items-center gap-1 text-[10px] text-slate-500">
-              <Layers className="w-3 h-3 text-slate-400" />
-              <span>
-                {task.completedSubtaskCount || 0}/{task.subtaskCount}
+            <span
+              data-testid="subtask-badge"
+              className="inline-flex items-center gap-1 text-xs text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md font-medium border border-slate-200/60"
+              title={`${task.subtaskCount} subtasks`}
+            >
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
+              <span data-testid="subtask-badge-count">
+                {task.completedSubtaskCount != null
+                  ? `${task.completedSubtaskCount}/${task.subtaskCount}`
+                  : task.subtaskCount}
               </span>
             </span>
           )}
         </div>
 
-        {/* Assignee Avatar */}
+        {/* Assignee Avatar with name from useMemberMap */}
         <div className="flex items-center">
-          <div
-            className="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-400 to-indigo-500 text-white flex items-center justify-center text-[9px] font-bold shadow-xs ring-1 ring-white"
-            title={task.assignedToName || 'Assigned'}
-          >
-            {initials}
-          </div>
+          <Avatar
+            src={avatarUrl}
+            name={assigneeName && assigneeName !== 'Unassigned' ? assigneeName : 'U'}
+            size="xs"
+            className="rounded-full shadow-xs ring-1 ring-white"
+            title={assigneeName}
+            dataTestId="assignee-avatar"
+          />
         </div>
       </div>
     </div>
   );
 };
+
+export default TaskCard;

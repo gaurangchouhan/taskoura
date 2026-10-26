@@ -26,8 +26,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +52,9 @@ class ProjectControllerTest {
 
     @MockitoBean
     private ProjectService projectService;
+
+    @MockitoBean
+    private com.taskoura.service.ProjectAccessService projectAccessService;
 
     @Test
     @DisplayName("POST /api/projects: 201 Created and ownerId matches logged-in user")
@@ -198,5 +203,29 @@ class ProjectControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(projectId.toString()))
                 .andExpect(jsonPath("$.name").value("Single Proj"));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{id}: 204 No Content with no body when authenticated")
+    void deleteProject_authenticated_returns204NoContent() throws Exception {
+        UUID projectId = UUID.randomUUID();
+        String userEmail = "owner@example.com";
+        String token = jwtUtil.generateToken(userEmail);
+
+        mockMvc.perform(delete("/api/projects/" + projectId)
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        verify(projectService).deleteProject(projectId, userEmail);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{id}: 401 when no Authorization header is provided")
+    void deleteProject_unauthenticated_returns401() throws Exception {
+        UUID projectId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/projects/" + projectId))
+                .andExpect(status().isUnauthorized());
     }
 }

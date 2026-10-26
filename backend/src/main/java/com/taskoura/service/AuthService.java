@@ -1,15 +1,8 @@
 package com.taskoura.service;
 
-import com.taskoura.dto.AuthResponse;
-import com.taskoura.dto.ForgotPasswordRequest;
-import com.taskoura.dto.LoginRequest;
-import com.taskoura.dto.MessageResponse;
-import com.taskoura.dto.RegisterRequest;
-import com.taskoura.dto.ResendOtpRequest;
-import com.taskoura.dto.ResetPasswordRequest;
-import com.taskoura.dto.UserResponse;
-import com.taskoura.dto.VerifyOtpRequest;
+import com.taskoura.dto.*;
 import com.taskoura.entity.User;
+import com.taskoura.entity.UserSession;
 import com.taskoura.exception.BadRequestException;
 import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.ForbiddenException;
@@ -18,6 +11,7 @@ import com.taskoura.exception.UnauthorizedException;
 import java.util.Optional;
 import com.taskoura.repository.UserRepository;
 import com.taskoura.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,13 +22,19 @@ public class AuthService {
     private final OtpService otpService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final SessionService sessionService;
+    private final EmailService emailService;
 
     public AuthService(UserRepository userRepository, OtpService otpService,
-                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+                       SessionService sessionService,
+                       @Autowired(required = false) EmailService emailService) {
         this.userRepository = userRepository;
         this.otpService = otpService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.sessionService = sessionService;
+        this.emailService = emailService;
     }
 
     public MessageResponse register(RegisterRequest request) {
@@ -78,6 +78,10 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        return login(request, null);
+    }
+
+    public AuthResponse login(LoginRequest request, String userAgent) {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
@@ -88,9 +92,12 @@ public class AuthService {
             throw new ForbiddenException("Please verify your email before logging in");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        UserSession session = sessionService.createSession(user, userAgent);
+        String token = jwtUtil.generateToken(user.getEmail(), session.getId(), session.getAbsoluteExpiresAt());
         UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail());
-        return new AuthResponse(token, userResponse);
+        SessionInfoResponse sessionInfo = sessionService.buildSessionInfo(session);
+
+        return new AuthResponse(token, userResponse, sessionInfo);
     }
 
     public MessageResponse forgotPassword(ForgotPasswordRequest request) {
@@ -116,7 +123,15 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         user.setResetOtpCode(null);
         user.setResetOtpExpiresAt(null);
+        user.setResetOtpAttempts(0);
         userRepository.save(user);
+
+        if (emailService != null) {
+            emailService.sendPasswordChangedEmail(user.getEmail(), user.getName());
+        }
+
+        // PHASE 4: Password reset revokes all of that user's sessions
+        sessionService.revokeAllUserSessions(user.getId());
 
         return new MessageResponse("Password reset successfully. You can now log in with your new password.");
     }
