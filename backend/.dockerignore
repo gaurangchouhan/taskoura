@@ -1,0 +1,39 @@
+# Build and dependency artifacts
+target/
+.git/
+.idea/
+.vscode/
+*.log
+.env
+
+# Environment and sensitive local configurations
+application-local.properties
+.env
+.env.*
+*.local
+
+# Version control & OS metadata
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+
+# Documentation and temporary files
+docs/
+*.log
+tmp/
+temp/
+
+# Docker files
+Dockerfile
+.dockerignore
