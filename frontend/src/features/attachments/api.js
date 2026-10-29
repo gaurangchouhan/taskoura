@@ -79,7 +79,7 @@ export function validateAttachmentFile(file) {
  */
 export async function getAttachments(taskId) {
   if (!taskId) throw new Error('Task ID is required');
-  const response = await apiClient.get(`/api/tasks/${taskId}/attachments`);
+  const response = await apiClient.get(`/tasks/${taskId}/attachments`);
   return response.data;
 }
 
@@ -108,7 +108,7 @@ export async function uploadAttachment(taskId, file, onUploadProgress) {
 
   // Do NOT pass headers: { 'Content-Type': 'multipart/form-data' } manually
   const response = await apiClient.post(
-    `/api/tasks/${taskId}/attachments`,
+    `/tasks/${taskId}/attachments`,
     formData,
     config
   );
@@ -120,7 +120,7 @@ export async function uploadAttachment(taskId, file, onUploadProgress) {
  */
 export async function deleteAttachment(attachmentId) {
   if (!attachmentId) throw new Error('Attachment ID is required');
-  const response = await apiClient.delete(`/api/attachments/${attachmentId}`);
+  const response = await apiClient.delete(`/attachments/${attachmentId}`);
   return response.data;
 }
 

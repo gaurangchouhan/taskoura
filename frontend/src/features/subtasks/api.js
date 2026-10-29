@@ -7,7 +7,7 @@ import { apiClient } from '../../services/api';
 export async function getSubtasks(parentTaskId) {
   if (!parentTaskId) throw new Error('Parent task ID is required');
 
-  const response = await apiClient.get(`/api/tasks/${parentTaskId}/subtasks`);
+  const response = await apiClient.get(`/tasks/${parentTaskId}/subtasks`);
   return response.data;
 }
 
@@ -30,7 +30,7 @@ export async function createSubtask(parentTaskId, payload) {
   };
 
   const response = await apiClient.post(
-    `/api/tasks/${parentTaskId}/subtasks`,
+    `/tasks/${parentTaskId}/subtasks`,
     cleanPayload
   );
   return response.data;

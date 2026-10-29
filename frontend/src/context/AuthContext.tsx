@@ -142,9 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionRef.current = null;
       setSessionState(null);
 
-      // 1. Call POST /api/auth/logout best-effort
+      // 1. Call POST /auth/logout best-effort
       try {
-        await apiClient.post('/api/auth/logout');
+        await apiClient.post('/auth/logout');
       } catch {
         // best effort
       }
@@ -193,10 +193,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [location, navigate, queryClient]
   );
 
-  // Logout button calls POST /api/auth/logout before clearing local state
+  // Logout button calls POST /auth/logout before clearing local state
   const logout = useCallback(async () => {
-    // Initiate POST /api/auth/logout with token still present in storage
-    const postPromise = apiClient.post('/api/auth/logout').catch(() => {});
+    // Initiate POST /auth/logout with token still present in storage
+    const postPromise = apiClient.post('/auth/logout').catch(() => {});
 
     clearToken();
     clearStoredSession();

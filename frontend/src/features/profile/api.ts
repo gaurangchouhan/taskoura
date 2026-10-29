@@ -6,7 +6,7 @@ import { UserProfileResponse, UpdateProfileRequest, AvatarResponse } from '../..
  * GET /api/users/me -> UserProfileResponse
  */
 export async function getProfile(): Promise<UserProfileResponse> {
-  const { data } = await apiClient.get<UserProfileResponse>('/api/users/me');
+  const { data } = await apiClient.get<UserProfileResponse>('/users/me');
   return data;
 }
 
@@ -15,7 +15,7 @@ export async function getProfile(): Promise<UserProfileResponse> {
  * PUT /api/users/me { name } -> UserProfileResponse
  */
 export async function updateProfile({ name }: { name: string }): Promise<UserProfileResponse> {
-  const { data } = await apiClient.put<UserProfileResponse>('/api/users/me', { name });
+  const { data } = await apiClient.put<UserProfileResponse>('/users/me', { name });
   return data;
 }
 
@@ -24,7 +24,7 @@ export async function updateProfile({ name }: { name: string }): Promise<UserPro
  * PUT /api/users/me/profile -> UserProfileResponse
  */
 export async function updateProfileDetails(payload: UpdateProfileRequest): Promise<UserProfileResponse> {
-  const { data } = await apiClient.put<UserProfileResponse>('/api/users/me/profile', payload);
+  const { data } = await apiClient.put<UserProfileResponse>('/users/me/profile', payload);
   return data;
 }
 
@@ -35,7 +35,7 @@ export async function updateProfileDetails(payload: UpdateProfileRequest): Promi
 export async function uploadAvatar(file: File): Promise<AvatarResponse> {
   const formData = new FormData();
   formData.append('file', file);
-  const { data } = await apiClient.post<AvatarResponse>('/api/users/me/avatar', formData);
+  const { data } = await apiClient.post<AvatarResponse>('/users/me/avatar', formData);
   return data;
 }
 
@@ -44,7 +44,7 @@ export async function uploadAvatar(file: File): Promise<AvatarResponse> {
  * DELETE /api/users/me/avatar -> 204
  */
 export async function deleteAvatar(): Promise<void> {
-  await apiClient.delete('/api/users/me/avatar');
+  await apiClient.delete('/users/me/avatar');
 }
 
 export default {

@@ -11,7 +11,7 @@ export const notificationService = {
     if (isBackground) {
       headers['X-Background-Request'] = 'true';
     }
-    const { data } = await apiClient.get<RawNotification[]>('/api/notifications', {
+    const { data } = await apiClient.get<RawNotification[]>('/notifications', {
       params: { unreadOnly },
       headers: Object.keys(headers).length > 0 ? headers : undefined,
     });
@@ -19,7 +19,7 @@ export const notificationService = {
   },
 
   markRead: async (id: string): Promise<Notification> => {
-    const { data } = await apiClient.patch<RawNotification>(`/api/notifications/${id}/read`);
+    const { data } = await apiClient.patch<RawNotification>(`/notifications/${id}/read`);
     return normalizeNotification(data);
   },
 };

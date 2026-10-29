@@ -4,12 +4,10 @@ import { Project, Task, User, Bug, TestCase, KanbanStatus, SessionInfo, AuthResp
 import { getToken, clearToken, isTokenExpired, setToken, setStoredUser, getStoredUser, setStoredSession, getStoredSession } from '../lib/token';
 import { getErrorCode } from '../lib/errors';
 
-const rawApiUrl = import.meta.env.VITE_API_URL;
-if (!rawApiUrl && import.meta.env.PROD) {
-  console.warn('VITE_API_URL is missing in production environment.');
-}
+const rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://taskoura.onrender.com' : 'http://localhost:8080');
 
-export const API_BASE = (rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '') || '';
+const cleanHost = (rawApiUrl || '').trim().replace(/\/+$/, '');
+export const API_BASE = cleanHost ? (cleanHost.endsWith('/api') ? cleanHost : `${cleanHost}/api`) : '/api';
 
 export const WAKE_UP_TOAST_MESSAGE = 'Waking up the server, this can take up to a minute';
 
@@ -79,6 +77,17 @@ export function handleAuthRedirect(reason: string = 'expired', sessionReason?: s
 
 // Request Interceptor
 apiClient.interceptors.request.use((config) => {
+  // If an endpoint call still has a redundant '/api/' prefix, strip it so /api appears exactly once
+  if (config.url) {
+    if (config.url.startsWith('/api/')) {
+      config.url = config.url.slice(4);
+    } else if (config.url === '/api') {
+      config.url = '';
+    } else if (config.url.startsWith('api/')) {
+      config.url = config.url.slice(3);
+    }
+  }
+
   startSlowRequestTimer(config);
 
   const rawUrl = config.url || '';
@@ -86,7 +95,8 @@ apiClient.interceptors.request.use((config) => {
     ? new URL(rawUrl).pathname
     : rawUrl;
 
-  const isPublic = pathname.startsWith('/api/auth/') || pathname.startsWith('/api/health');
+  const isPublic = pathname.startsWith('/auth/') || pathname.startsWith('/health') ||
+                   pathname.startsWith('/api/auth/') || pathname.startsWith('/api/health');
 
   if (!isPublic) {
     const token = getToken();
@@ -127,7 +137,7 @@ apiClient.interceptors.response.use(
     const pathname = rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
       ? new URL(rawUrl).pathname
       : rawUrl;
-    const isAuthEndpoint = pathname.startsWith('/api/auth/');
+    const isAuthEndpoint = pathname.startsWith('/auth/') || pathname.startsWith('/api/auth/');
 
     // 401 is definitive: clear auth and redirect to /login
     // Keep ?reason=expired for UNAUTHENTICATED (or default), ?reason=timeout for SESSION_EXPIRED
@@ -203,11 +213,11 @@ if (typeof window !== 'undefined') {
 // Health Service
 export const healthService = {
   getHealth: async (): Promise<{ status: string; service?: string }> => {
-    const { data } = await apiClient.get<{ status: string; service?: string }>('/api/health');
+    const { data } = await apiClient.get<{ status: string; service?: string }>('/health');
     return data;
   },
   check: async (): Promise<{ status: string; service?: string }> => {
-    const { data } = await apiClient.get<{ status: string; service?: string }>('/api/health');
+    const { data } = await apiClient.get<{ status: string; service?: string }>('/health');
     return data;
   },
 };
@@ -219,7 +229,7 @@ if (typeof window !== 'undefined') {
 // Auth Service
 export const authService = {
   login: async (credentials: { email: string; password: string }) => {
-    const { data } = await apiClient.post<AuthResponse>('/api/auth/login', credentials);
+    const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials);
     setToken(data.token);
     setStoredUser(data.user);
     if (data.session) {
@@ -229,38 +239,38 @@ export const authService = {
   },
 
   register: async (payload: { name: string; email: string; password: string }) => {
-    const { data } = await apiClient.post<User>('/api/auth/register', payload);
+    const { data } = await apiClient.post<User>('/auth/register', payload);
     return data;
   },
 
   getCurrentUser: async (): Promise<User> => {
-    const { data } = await apiClient.get<User>('/api/users/me');
+    const { data } = await apiClient.get<User>('/users/me');
     return data;
   },
 
   verifyOtp: async (payload: { email: string; otp: string }) => {
-    const { data } = await apiClient.post<{ message: string }>('/api/auth/verify-otp', payload);
+    const { data } = await apiClient.post<{ message: string }>('/auth/verify-otp', payload);
     return data;
   },
 
   resendOtp: async (email: string) => {
-    const { data } = await apiClient.post<{ message: string }>('/api/auth/resend-otp', { email });
+    const { data } = await apiClient.post<{ message: string }>('/auth/resend-otp', { email });
     return data;
   },
 
   heartbeat: async (): Promise<SessionInfo> => {
-    const { data } = await apiClient.post<SessionInfo>('/api/auth/session/heartbeat');
+    const { data } = await apiClient.post<SessionInfo>('/auth/session/heartbeat');
     return data;
   },
 
   getSession: async (): Promise<SessionInfo> => {
-    const { data } = await apiClient.get<SessionInfo>('/api/auth/session');
+    const { data } = await apiClient.get<SessionInfo>('/auth/session');
     return data;
   },
 
   logout: async () => {
     try {
-      await apiClient.post('/api/auth/logout');
+      await apiClient.post('/auth/logout');
     } catch {
       // best effort
     } finally {
@@ -284,12 +294,12 @@ export { qualityService } from './qualityService';
 // Bugs & QA
 export const qaService = {
   getBugs: async (projectId: string): Promise<Bug[]> => {
-    const { data } = await apiClient.get<Bug[]>(`/api/projects/${projectId}/bugs`);
+    const { data } = await apiClient.get<Bug[]>(`/projects/${projectId}/bugs`);
     return data;
   },
 
   getTestCases: async (projectId: string): Promise<TestCase[]> => {
-    const { data } = await apiClient.get<TestCase[]>(`/api/projects/${projectId}/test-cases`);
+    const { data } = await apiClient.get<TestCase[]>(`/projects/${projectId}/test-cases`);
     return data;
   },
 };
