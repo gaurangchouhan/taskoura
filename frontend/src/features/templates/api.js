@@ -5,7 +5,7 @@ import { apiClient } from '../../services/api';
  * GET /api/templates -> { templates: [{ key, name, description, moduleCount, taskCount }] }
  */
 export async function getTemplates() {
-  const response = await apiClient.get('/api/templates');
+  const response = await apiClient.get('/templates');
   return response.data;
 }
 
@@ -19,7 +19,7 @@ export async function applyTemplate(projectId, key) {
   if (!key) throw new Error('Template key is required');
 
   const response = await apiClient.post(
-    `/api/projects/${projectId}/templates/${encodeURIComponent(key)}/apply`
+    `/projects/${projectId}/templates/${encodeURIComponent(key)}/apply`
   );
   return response.data;
 }

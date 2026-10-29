@@ -8,12 +8,12 @@ import {
 
 export const dashboardService = {
   getDashboard: async (projectId: string): Promise<DashboardStats> => {
-    const { data } = await apiClient.get(`/api/projects/${projectId}/dashboard`);
+    const { data } = await apiClient.get(`/projects/${projectId}/dashboard`);
     return normalizeDashboard(data);
   },
 
   getReport: async (projectId: string): Promise<ProjectReportData> => {
-    const { data } = await apiClient.get(`/api/projects/${projectId}/report`);
+    const { data } = await apiClient.get(`/projects/${projectId}/report`);
     return normalizeReport(data);
   },
 };
