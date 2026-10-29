@@ -5,7 +5,7 @@ import { apiClient } from '../../services/api';
  * POST /api/auth/forgot-password { email } -> { message }
  */
 export async function forgotPassword({ email }) {
-  const { data } = await apiClient.post('/api/auth/forgot-password', { email });
+  const { data } = await apiClient.post('/auth/forgot-password', { email });
   return data;
 }
 
@@ -14,7 +14,7 @@ export async function forgotPassword({ email }) {
  * POST /api/auth/reset-password { email, otp, newPassword } -> { message }
  */
 export async function resetPassword({ email, otp, newPassword }) {
-  const { data } = await apiClient.post('/api/auth/reset-password', { email, otp, newPassword });
+  const { data } = await apiClient.post('/auth/reset-password', { email, otp, newPassword });
   return data;
 }
 

@@ -7,7 +7,7 @@ import { apiClient } from '../../services/api';
 export async function getCalendar(projectId, month) {
   if (!projectId) throw new Error('Project ID is required');
   const params = month ? { month } : {};
-  const response = await apiClient.get(`/api/projects/${projectId}/calendar`, { params });
+  const response = await apiClient.get(`/projects/${projectId}/calendar`, { params });
   return response.data;
 }
 
@@ -17,7 +17,7 @@ export async function getCalendar(projectId, month) {
  */
 export async function getUpcomingDeadlines(projectId, withinDays = 7) {
   if (!projectId) throw new Error('Project ID is required');
-  const response = await apiClient.get(`/api/projects/${projectId}/deadlines/upcoming`, {
+  const response = await apiClient.get(`/projects/${projectId}/deadlines/upcoming`, {
     params: { withinDays: Number(withinDays) || 7 },
   });
   return response.data;
