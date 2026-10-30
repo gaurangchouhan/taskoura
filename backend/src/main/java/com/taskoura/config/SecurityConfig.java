@@ -2,10 +2,16 @@ package com.taskoura.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskoura.security.JwtAuthFilter;
+import com.taskoura.security.oauth.CustomOAuth2AuthorizationRequestResolver;
+import com.taskoura.security.oauth.CustomOAuth2UserService;
+import com.taskoura.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.taskoura.security.oauth.OAuth2AuthenticationFailureHandler;
+import com.taskoura.security.oauth.OAuth2AuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -13,6 +19,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -22,7 +29,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -82,7 +88,56 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain oauthSecurityFilterChain(
+            HttpSecurity http,
+            @Autowired(required = false) ClientRegistrationRepository clientRegistrationRepository,
+            @Autowired(required = false) OAuth2AuthenticationSuccessHandler successHandler,
+            @Autowired(required = false) OAuth2AuthenticationFailureHandler failureHandler,
+            @Autowired(required = false) HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository,
+            @Autowired(required = false) CustomOAuth2UserService customOAuth2UserService
+    ) throws Exception {
+        http
+            .securityMatcher("/oauth2/**", "/login/oauth2/**")
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .csrf(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(auth -> auth
+                .anyRequest().permitAll()
+            );
+
+        if (clientRegistrationRepository != null) {
+            http.oauth2Login(oauth2 -> {
+                oauth2.clientRegistrationRepository(clientRegistrationRepository);
+                oauth2.authorizationEndpoint(auth -> {
+                    auth.baseUri("/oauth2/authorization");
+                    if (cookieAuthorizationRequestRepository != null) {
+                        auth.authorizationRequestRepository(cookieAuthorizationRequestRepository);
+                    }
+                    auth.authorizationRequestResolver(new CustomOAuth2AuthorizationRequestResolver(clientRegistrationRepository));
+                });
+                oauth2.redirectionEndpoint(redirection -> redirection
+                    .baseUri("/login/oauth2/code/*")
+                );
+                if (customOAuth2UserService != null) {
+                    oauth2.userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService)
+                    );
+                }
+                if (successHandler != null) {
+                    oauth2.successHandler(successHandler);
+                }
+                if (failureHandler != null) {
+                    oauth2.failureHandler(failureHandler);
+                }
+            });
+        }
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
@@ -97,7 +152,9 @@ public class SecurityConfig {
                     "/api/auth/resend-otp",
                     "/api/auth/login",
                     "/api/auth/forgot-password",
-                    "/api/auth/reset-password"
+                    "/api/auth/reset-password",
+                    "/api/auth/oauth/providers",
+                    "/api/auth/oauth/exchange"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

@@ -5,13 +5,21 @@ import {
   updateProfileDetails,
   uploadAvatar,
   deleteAvatar,
+  getOAuthProviders,
+  startOAuthLink,
+  disconnectProvider,
 } from './api';
 import { useAuth } from '../../context/AuthContext';
 import { setStoredUser } from '../../lib/token';
-import { UserProfileResponse, UpdateProfileRequest } from '../../types/profile';
+import {
+  UserProfileResponse,
+  UpdateProfileRequest,
+  OAuthProvidersResponse,
+} from '../../types/profile';
 
 export const profileQueryKeys = {
   me: ['users', 'me'] as const,
+  providers: ['auth', 'oauth', 'providers'] as const,
 };
 
 /**
@@ -24,6 +32,41 @@ export function useMe() {
     queryKey: profileQueryKeys.me,
     queryFn: getProfile,
     enabled: isAuthenticated,
+  });
+}
+
+/**
+ * Hook to fetch available OAuth providers (Google, GitHub).
+ */
+export function useOAuthProviders() {
+  return useQuery<OAuthProvidersResponse>({
+    queryKey: profileQueryKeys.providers,
+    queryFn: getOAuthProviders,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to initiate linking an OAuth account.
+ */
+export function useStartOAuthLink() {
+  return useMutation({
+    mutationFn: (provider: string) => startOAuthLink(provider),
+  });
+}
+
+/**
+ * Hook to disconnect an OAuth provider.
+ * Invalidates the 'me' query on success.
+ */
+export function useDisconnectProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (provider: string) => disconnectProvider(provider),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: profileQueryKeys.me });
+    },
   });
 }
 
@@ -140,6 +183,9 @@ export function useDeleteAvatar() {
 
 export default {
   useMe,
+  useOAuthProviders,
+  useStartOAuthLink,
+  useDisconnectProvider,
   useUpdateProfile,
   useUpdateProfileDetails,
   useUploadAvatar,

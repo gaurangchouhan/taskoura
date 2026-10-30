@@ -30,6 +30,9 @@ public class User {
 
     private String passwordHash;
 
+    @Builder.Default
+    @Column(name = "password_login_enabled", nullable = false)
+    private boolean passwordLoginEnabled = true;
 
     @Builder.Default
     private boolean verified = false;

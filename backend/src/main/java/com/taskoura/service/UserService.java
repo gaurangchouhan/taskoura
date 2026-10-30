@@ -27,15 +27,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final AttachmentStorageService attachmentStorageService;
+    private final com.taskoura.repository.OAuthIdentityRepository oauthIdentityRepository;
 
     public UserService(
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
-            @Autowired(required = false) AttachmentStorageService attachmentStorageService
+            @Autowired(required = false) AttachmentStorageService attachmentStorageService,
+            @Autowired(required = false) com.taskoura.repository.OAuthIdentityRepository oauthIdentityRepository
     ) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.attachmentStorageService = attachmentStorageService;
+        this.oauthIdentityRepository = oauthIdentityRepository;
     }
 
     public UserProfileResponse getProfile(String email) {
@@ -45,6 +48,16 @@ public class UserService {
         UserProfile profile = userProfileRepository.findById(user.getId()).orElse(null);
         ProfileDataDto profileData = toProfileData(profile);
 
+        List<UserProviderDto> providerDtos = Collections.emptyList();
+        if (oauthIdentityRepository != null) {
+            List<com.taskoura.entity.OAuthIdentity> identities = oauthIdentityRepository.findByUserIdOrderByCreatedAtAsc(user.getId());
+            if (identities != null && !identities.isEmpty()) {
+                providerDtos = identities.stream()
+                        .map(i -> new UserProviderDto(i.getProvider(), i.getEmailAtLink(), i.getCreatedAt()))
+                        .toList();
+            }
+        }
+
         return new UserProfileResponse(
                 user.getId(),
                 user.getName(),
@@ -52,7 +65,8 @@ public class UserService {
                 user.isVerified(),
                 user.getCreatedAt(),
                 profileData,
-                Collections.emptyList()
+                providerDtos,
+                user.isPasswordLoginEnabled()
         );
     }
 
@@ -340,6 +354,30 @@ public class UserService {
             profile.setAvatarUrl(null);
             userProfileRepository.save(profile);
         }
+    }
+
+    @Transactional
+    public void disconnectProvider(String email, String provider) {
+        if (provider == null || provider.isBlank()) {
+            throw new BadRequestException("Provider is required");
+        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (oauthIdentityRepository == null) {
+            throw new NotFoundException("Connected provider not found");
+        }
+
+        String p = provider.trim().toLowerCase();
+        com.taskoura.entity.OAuthIdentity identity = oauthIdentityRepository.findByUserIdAndProvider(user.getId(), p)
+                .orElseThrow(() -> new NotFoundException("Connected provider not found"));
+
+        List<com.taskoura.entity.OAuthIdentity> allIdentities = oauthIdentityRepository.findByUserId(user.getId());
+        if (!user.isPasswordLoginEnabled() && allIdentities.size() <= 1) {
+            throw new com.taskoura.exception.ConflictException("LAST_LOGIN_METHOD", "Cannot disconnect your only sign-in method");
+        }
+
+        oauthIdentityRepository.delete(identity);
     }
 
     private ProfileDataDto toProfileData(UserProfile profile) {

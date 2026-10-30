@@ -49,6 +49,12 @@ class AuthServiceTest {
     @Mock
     private SessionService sessionService;
 
+    @Mock
+    private OAuthCodeService oAuthCodeService;
+
+    @Mock
+    private org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
+
     @InjectMocks
     private AuthService authService;
 
@@ -298,9 +304,51 @@ class AuthServiceTest {
 
         assertThat(response.message()).isEqualTo("Password reset successfully. You can now log in with your new password.");
         assertThat(sampleUser.getPasswordHash()).isEqualTo("new_hash");
+        assertThat(sampleUser.isPasswordLoginEnabled()).isTrue();
         assertThat(sampleUser.getResetOtpCode()).isNull();
         assertThat(sampleUser.getResetOtpExpiresAt()).isNull();
         verify(userRepository).save(sampleUser);
         verify(sessionService).revokeAllUserSessions(sampleUser.getId());
+    }
+
+    @Test
+    @DisplayName("login: user with passwordLoginEnabled=false throws UnauthorizedException('Invalid credentials')")
+    void login_oauthOnlyUser_throwsUnauthorized() {
+        sampleUser.setPasswordLoginEnabled(false);
+        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
+
+        LoginRequest request = new LoginRequest("alex@example.com", "anyPassword");
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Invalid credentials");
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("exchangeOAuthCode: successfully issues token, user, and session")
+    void exchangeOAuthCode_success() {
+        UUID userId = sampleUser.getId();
+        when(oAuthCodeService.consumeCode("raw-code-123")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
+
+        com.taskoura.entity.UserSession mockSession = com.taskoura.entity.UserSession.builder()
+                .id(UUID.randomUUID())
+                .user(sampleUser)
+                .absoluteExpiresAt(java.time.Instant.now().plusSeconds(3600))
+                .build();
+
+        when(sessionService.createSession(sampleUser, "Chrome")).thenReturn(mockSession);
+        when(jwtUtil.generateToken(sampleUser.getEmail(), mockSession.getId(), mockSession.getAbsoluteExpiresAt()))
+                .thenReturn("mocked.jwt.token");
+        when(sessionService.buildSessionInfo(mockSession))
+                .thenReturn(new com.taskoura.dto.SessionInfoResponse(3600, 300, null, null, null));
+
+        AuthResponse response = authService.exchangeOAuthCode("raw-code-123", "Chrome");
+
+        assertThat(response.token()).isEqualTo("mocked.jwt.token");
+        assertThat(response.user().email()).isEqualTo("alex@example.com");
+        assertThat(response.session()).isNotNull();
     }
 }

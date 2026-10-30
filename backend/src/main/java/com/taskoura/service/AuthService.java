@@ -1,6 +1,8 @@
 package com.taskoura.service;
 
 import com.taskoura.dto.*;
+import com.taskoura.dto.OAuthDtos.OAuthProviderInfo;
+import com.taskoura.dto.OAuthDtos.OAuthProvidersResponse;
 import com.taskoura.entity.User;
 import com.taskoura.entity.UserSession;
 import com.taskoura.exception.BadRequestException;
@@ -24,17 +26,26 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final SessionService sessionService;
     private final EmailService emailService;
+    private final OAuthCodeService oAuthCodeService;
+    private final com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService;
+    private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
 
     public AuthService(UserRepository userRepository, OtpService otpService,
                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
                        SessionService sessionService,
-                       @Autowired(required = false) EmailService emailService) {
+                       @Autowired(required = false) EmailService emailService,
+                       @Autowired(required = false) OAuthCodeService oAuthCodeService,
+                       @Autowired(required = false) com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService,
+                       @Autowired(required = false) org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) {
         this.userRepository = userRepository;
         this.otpService = otpService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.sessionService = sessionService;
         this.emailService = emailService;
+        this.oAuthCodeService = oAuthCodeService;
+        this.oAuthLinkTokenService = oAuthLinkTokenService;
+        this.clientRegistrationRepository = clientRegistrationRepository;
     }
 
     public MessageResponse register(RegisterRequest request) {
@@ -85,6 +96,10 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
+        if (!user.isPasswordLoginEnabled()) {
+            throw new UnauthorizedException("Invalid credentials");
+        }
+
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new UnauthorizedException("Invalid credentials");
         }
@@ -121,6 +136,7 @@ public class AuthService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordLoginEnabled(true);
         user.setResetOtpCode(null);
         user.setResetOtpExpiresAt(null);
         user.setResetOtpAttempts(0);
@@ -134,5 +150,53 @@ public class AuthService {
         sessionService.revokeAllUserSessions(user.getId());
 
         return new MessageResponse("Password reset successfully. You can now log in with your new password.");
+    }
+
+    public com.taskoura.dto.OAuthDtos.OAuthLinkStartResponse startOAuthLink(String email, String provider) {
+        if (provider == null || provider.isBlank()) {
+            throw new BadRequestException("Provider is required");
+        }
+        String p = provider.trim().toLowerCase();
+        if (clientRegistrationRepository == null || clientRegistrationRepository.findByRegistrationId(p) == null) {
+            throw new BadRequestException("Provider is not configured or disabled");
+        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        if (oAuthLinkTokenService == null) {
+            throw new BadRequestException("OAuth linking service is not available");
+        }
+        String token = oAuthLinkTokenService.createLinkToken(user.getId(), p);
+        String url = "/oauth2/authorization/" + p + "?link_token=" + token;
+        return new com.taskoura.dto.OAuthDtos.OAuthLinkStartResponse(url);
+    }
+
+    public OAuthProvidersResponse getAvailableOAuthProviders() {
+        java.util.List<OAuthProviderInfo> providers = new java.util.ArrayList<>();
+        if (clientRegistrationRepository != null) {
+            if (clientRegistrationRepository.findByRegistrationId("google") != null) {
+                providers.add(new OAuthProviderInfo("google", "Google", "/oauth2/authorization/google"));
+            }
+            if (clientRegistrationRepository.findByRegistrationId("github") != null) {
+                providers.add(new OAuthProviderInfo("github", "GitHub", "/oauth2/authorization/github"));
+            }
+        }
+        return new OAuthProvidersResponse(providers);
+    }
+
+    public AuthResponse exchangeOAuthCode(String code, String userAgent) {
+        if (oAuthCodeService == null) {
+            throw new BadRequestException("OAuth code exchange is not available");
+        }
+        java.util.UUID userId = oAuthCodeService.consumeCode(code);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        UserSession session = sessionService.createSession(user, userAgent);
+        String token = jwtUtil.generateToken(user.getEmail(), session.getId(), session.getAbsoluteExpiresAt());
+        UserResponse userResponse = new UserResponse(user.getId(), user.getName(), user.getEmail());
+        SessionInfoResponse sessionInfo = sessionService.buildSessionInfo(session);
+
+        return new AuthResponse(token, userResponse, sessionInfo);
     }
 }

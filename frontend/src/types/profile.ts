@@ -22,6 +22,26 @@ export interface UserProfileData {
   notificationPrefs: NotificationPrefs;
 }
 
+export interface UserProvider {
+  provider: string;
+  email: string;
+  linkedAt: string;
+}
+
+export interface OAuthProviderInfo {
+  key: string;
+  label: string;
+  startUrl: string;
+}
+
+export interface OAuthProvidersResponse {
+  providers: OAuthProviderInfo[];
+}
+
+export interface OAuthLinkStartResponse {
+  url: string;
+}
+
 export interface UserProfileResponse {
   id: string;
   name: string;
@@ -29,7 +49,8 @@ export interface UserProfileResponse {
   verified: boolean;
   createdAt: string;
   profile: UserProfileData;
-  providers: string[];
+  providers: UserProvider[];
+  passwordLoginEnabled?: boolean;
 }
 
 export interface UpdateProfileRequest {
