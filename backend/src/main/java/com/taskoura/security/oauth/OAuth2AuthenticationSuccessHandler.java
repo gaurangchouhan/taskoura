@@ -39,6 +39,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private final OAuthLinkTokenService oAuthLinkTokenService;
     private final String frontendUrl;
 
+    @Autowired
     public OAuth2AuthenticationSuccessHandler(
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
@@ -146,7 +147,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             User newUser = User.builder()
                     .name(safeName)
                     .email(email.toLowerCase().trim())
-                    .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
+                    .passwordHash(null)
                     .verified(true)
                     .passwordLoginEnabled(false)
                     .build();

@@ -57,6 +57,7 @@ public class AuthService {
                 .name(request.name())
                 .email(request.email())
                 .passwordHash(passwordEncoder.encode(request.password()))
+                .passwordLoginEnabled(true)
                 .verified(false)
                 .build();
 
@@ -96,7 +97,7 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
-        if (!user.isPasswordLoginEnabled()) {
+        if (!user.isPasswordLoginEnabled() || user.getPasswordHash() == null) {
             throw new UnauthorizedException("Invalid credentials");
         }
 

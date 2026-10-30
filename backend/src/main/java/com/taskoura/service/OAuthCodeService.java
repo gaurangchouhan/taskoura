@@ -3,6 +3,7 @@ package com.taskoura.service;
 import com.taskoura.entity.OAuthLoginCode;
 import com.taskoura.exception.ValidationException;
 import com.taskoura.repository.OAuthLoginCodeRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +26,15 @@ public class OAuthCodeService {
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public OAuthCodeService(OAuthLoginCodeRepository loginCodeRepository) {
-        this(loginCodeRepository, Clock.systemUTC());
-    }
-
-    public OAuthCodeService(OAuthLoginCodeRepository loginCodeRepository, Clock clock) {
+    @Autowired
+    public OAuthCodeService(OAuthLoginCodeRepository loginCodeRepository,
+                            @Autowired(required = false) Clock clock) {
         this.loginCodeRepository = loginCodeRepository;
         this.clock = clock != null ? clock : Clock.systemUTC();
+    }
+
+    public OAuthCodeService(OAuthLoginCodeRepository loginCodeRepository) {
+        this(loginCodeRepository, Clock.systemUTC());
     }
 
     @Transactional

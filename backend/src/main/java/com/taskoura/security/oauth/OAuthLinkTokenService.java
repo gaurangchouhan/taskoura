@@ -1,5 +1,6 @@
 package com.taskoura.security.oauth;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -16,12 +17,13 @@ public class OAuthLinkTokenService {
     private final Clock clock;
     private final Map<String, LinkTokenData> tokenStore = new ConcurrentHashMap<>();
 
-    public OAuthLinkTokenService() {
-        this(Clock.systemUTC());
+    @Autowired
+    public OAuthLinkTokenService(@Autowired(required = false) Clock clock) {
+        this.clock = clock != null ? clock : Clock.systemUTC();
     }
 
-    public OAuthLinkTokenService(Clock clock) {
-        this.clock = clock != null ? clock : Clock.systemUTC();
+    public OAuthLinkTokenService() {
+        this(Clock.systemUTC());
     }
 
     public String createLinkToken(UUID userId, String provider) {

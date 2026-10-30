@@ -166,3 +166,25 @@ mvn -f backend/pom.xml test -Dtest="OAuth2FlowTest,OAuthControllerTest,AuthServi
    ```
    Confirm 200 OK with `token`, `user`, and `session`.
 
+---
+
+## 7. Database Migration for Existing PostgreSQL Deployments (`password_login_enabled`)
+
+When upgrading an existing database containing user records to support OAuth, run the safe migration script in Neon SQL Editor (`backend/docs/MIGRATION_PASSWORD_LOGIN_ENABLED.sql`):
+
+```sql
+-- Step 1: Add column as nullable
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_login_enabled boolean;
+
+-- Step 2: Backfill existing records based on password credential presence
+UPDATE users
+SET password_login_enabled = (password_hash IS NOT NULL AND password_hash <> '')
+WHERE password_login_enabled IS NULL;
+
+-- Step 3: Establish safe default for new rows
+ALTER TABLE users ALTER COLUMN password_login_enabled SET DEFAULT true;
+
+-- Step 4: Apply NOT NULL constraint safely
+ALTER TABLE users ALTER COLUMN password_login_enabled SET NOT NULL;
+```
+

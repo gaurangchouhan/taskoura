@@ -140,7 +140,6 @@ class OAuth2FlowTest {
         when(oauthIdentityRepository.findByProviderAndProviderUserId("github", "123456"))
                 .thenReturn(Optional.empty());
         when(userRepository.findByEmail("octocat@github.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$hashedUnusablePassword");
 
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
@@ -173,6 +172,7 @@ class OAuth2FlowTest {
         assertThat(createdUser.getName()).isEqualTo("The Octocat");
         assertThat(createdUser.isVerified()).isTrue();
         assertThat(createdUser.isPasswordLoginEnabled()).isFalse();
+        assertThat(createdUser.getPasswordHash()).isNull();
 
         // Verify OAuthIdentity created
         ArgumentCaptor<OAuthIdentity> identityCaptor = ArgumentCaptor.forClass(OAuthIdentity.class);

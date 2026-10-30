@@ -1,6 +1,7 @@
 package com.taskoura.security.oauth;
 
 import com.taskoura.exception.RateLimitedException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -17,6 +18,11 @@ public class OAuthExchangeRateLimiter {
     private final int maxAttempts;
     private final int windowSeconds;
     private final Map<String, Deque<Instant>> attempts = new ConcurrentHashMap<>();
+
+    @Autowired
+    public OAuthExchangeRateLimiter(@Autowired(required = false) Clock clock) {
+        this(clock != null ? clock : Clock.systemUTC(), 10, 60);
+    }
 
     public OAuthExchangeRateLimiter() {
         this(Clock.systemUTC(), 10, 60);
