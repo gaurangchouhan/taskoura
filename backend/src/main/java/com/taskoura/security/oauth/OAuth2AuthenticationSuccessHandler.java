@@ -144,10 +144,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             // Case (b): No identity and no user with that email -> create user, identity, and profile
             String safeName = (name != null && !name.isBlank()) ? name.trim() : email.substring(0, email.indexOf('@'));
 
+            String randomUnusableHash = passwordEncoder != null
+                    ? passwordEncoder.encode(UUID.randomUUID().toString())
+                    : "{bcrypt}" + UUID.randomUUID().toString();
+
             User newUser = User.builder()
                     .name(safeName)
                     .email(email.toLowerCase().trim())
-                    .passwordHash(null)
+                    .passwordHash(randomUnusableHash)
                     .verified(true)
                     .passwordLoginEnabled(false)
                     .build();

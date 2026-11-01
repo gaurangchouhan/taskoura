@@ -101,11 +101,22 @@ public class SecurityConfig {
             .securityMatcher("/oauth2/**", "/login/oauth2/**")
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
             );
 
-        if (clientRegistrationRepository != null) {
+        boolean hasProviders = false;
+        if (clientRegistrationRepository instanceof com.taskoura.security.oauth.DynamicClientRegistrationRepository dynamicRepo) {
+            hasProviders = !dynamicRepo.getConfiguredProviderKeys().isEmpty();
+        } else if (clientRegistrationRepository instanceof Iterable<?> iterable) {
+            hasProviders = iterable.iterator().hasNext();
+        } else if (clientRegistrationRepository != null) {
+            hasProviders = clientRegistrationRepository.findByRegistrationId("google") != null
+                    || clientRegistrationRepository.findByRegistrationId("github") != null;
+        }
+
+        if (hasProviders) {
             http.oauth2Login(oauth2 -> {
                 oauth2.clientRegistrationRepository(clientRegistrationRepository);
                 oauth2.authorizationEndpoint(auth -> {
@@ -145,6 +156,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
+                    "/error",
                     "/api/health",
                     "/api/attachments/*/download",
                     "/api/auth/register",

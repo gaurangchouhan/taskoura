@@ -58,4 +58,5 @@ export const queryKeys = {
     list: (unreadOnly?: boolean) => ['notifications', 'list', unreadOnly] as const,
     unreadCount: () => ['notifications', 'unreadCount'] as const,
   },
+  oauthProviders: ['oauth', 'providers'] as const,
 } as const;

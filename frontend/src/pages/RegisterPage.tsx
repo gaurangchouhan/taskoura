@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FolderGit2, ArrowRight, Lock, Mail, User, AlertCircle } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { useRegister } from '../hooks/useAuthApi';
 import { getErrorMessage, getErrorCode } from '../lib/errors';
+import { apiClient } from '../services/api';
+import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
 
 export const RegisterPage: React.FC = () => {
   const [name, setName] = useState('');
@@ -15,6 +17,11 @@ export const RegisterPage: React.FC = () => {
 
   const navigate = useNavigate();
   const registerMutation = useRegister();
+
+  // Warm up Render backend on mount
+  useEffect(() => {
+    apiClient.get('/health').catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,6 +201,9 @@ export const RegisterPage: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Social Auth */}
+          <SocialAuthButtons action="signup" />
 
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
             <p className="text-sm text-slate-500">

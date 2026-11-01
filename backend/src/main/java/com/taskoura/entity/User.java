@@ -31,7 +31,7 @@ public class User {
     private String passwordHash;
 
     @Builder.Default
-    @Column(name = "password_login_enabled", nullable = false, columnDefinition = "boolean default true")
+    @Column(name = "password_login_enabled", nullable = false, columnDefinition = "boolean not null default true")
     private boolean passwordLoginEnabled = true;
 
     @Builder.Default

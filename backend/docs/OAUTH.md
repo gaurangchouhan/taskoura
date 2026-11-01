@@ -15,6 +15,7 @@ Taskoura dynamically registers OAuth2 providers. If credentials for a provider a
 | `GITHUB_CLIENT_ID` | GitHub OAuth App Client ID | `Ov23li...` | Configured in Render Dashboard |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth App Client Secret | `47f8...` | Configured in Render Dashboard |
 | `FRONTEND_URL` | Taskoura Frontend Base URL | `http://localhost:5173` | `https://taskoura.vercel.app` |
+| `CORS_ALLOWED_ORIGINS` | Allowed CORS origins for frontend requests | `http://localhost:5173` | `https://taskoura.vercel.app` |
 
 ---
 
@@ -28,13 +29,15 @@ Taskoura configures the standard Spring Security redirect URI template:
 
 ### Exact Callback URLs for Provider Dashboards
 
-#### Local Development (`http://localhost:8081` or your configured `SERVER_PORT`)
+#### Local Development (`http://localhost:8080` or `http://localhost:8081`)
 - **Google Authorized Redirect URI**:
   ```
+  http://localhost:8080/login/oauth2/code/google
   http://localhost:8081/login/oauth2/code/google
   ```
 - **GitHub Authorization Callback URL**:
   ```
+  http://localhost:8080/login/oauth2/code/github
   http://localhost:8081/login/oauth2/code/github
   ```
 

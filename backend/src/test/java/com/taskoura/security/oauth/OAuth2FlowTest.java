@@ -83,6 +83,7 @@ class OAuth2FlowTest {
         );
         failureHandler = new OAuth2AuthenticationFailureHandler(frontendUrl);
         rateLimiter = new OAuthExchangeRateLimiter(Clock.systemUTC(), 3, 60);
+        lenient().when(passwordEncoder.encode(anyString())).thenAnswer(inv -> "{bcrypt}" + inv.getArgument(0));
     }
 
     private OAuth2AuthenticationToken createAuthToken(String registrationId, Map<String, Object> attributes, String nameAttributeKey) {
@@ -172,7 +173,7 @@ class OAuth2FlowTest {
         assertThat(createdUser.getName()).isEqualTo("The Octocat");
         assertThat(createdUser.isVerified()).isTrue();
         assertThat(createdUser.isPasswordLoginEnabled()).isFalse();
-        assertThat(createdUser.getPasswordHash()).isNull();
+        assertThat(createdUser.getPasswordHash()).isNotNull();
 
         // Verify OAuthIdentity created
         ArgumentCaptor<OAuthIdentity> identityCaptor = ArgumentCaptor.forClass(OAuthIdentity.class);
@@ -253,6 +254,43 @@ class OAuth2FlowTest {
 
         assertThat(response.getRedirectedUrl()).isEqualTo("https://taskoura.vercel.app/auth/callback?error=EMAIL_UNVERIFIED");
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Redirect target strictly uses FRONTEND_URL and ignores request redirect parameters/headers")
+    void testRedirectTargetNeverComesFromRequest() throws IOException {
+        UUID newUserId = UUID.randomUUID();
+        when(oauthIdentityRepository.findByProviderAndProviderUserId("google", "sub-1234"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("secure@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(newUserId);
+            return u;
+        });
+
+        Map<String, Object> attrs = Map.of(
+                "sub", "sub-1234",
+                "email", "secure@example.com",
+                "email_verified", true,
+                "name", "Secure User"
+        );
+        OAuth2AuthenticationToken token = createAuthToken("google", attrs, "sub");
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("redirect_uri", "https://attacker-controlled-site.com/steal");
+        request.setParameter("target", "https://evil.com");
+        request.setParameter("return_to", "https://evil.com/callback");
+        request.addHeader("Referer", "https://attacker.com");
+        request.addHeader("Host", "attacker.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        successHandler.onAuthenticationSuccess(request, response, token);
+
+        assertThat(response.getRedirectedUrl()).startsWith("https://taskoura.vercel.app/auth/callback?code=");
+        assertThat(response.getRedirectedUrl()).doesNotContain("attacker-controlled-site.com");
+        assertThat(response.getRedirectedUrl()).doesNotContain("evil.com");
+        assertThat(response.getRedirectedUrl()).doesNotContain("attacker.com");
     }
 
     // -------------------------------------------------------------------------

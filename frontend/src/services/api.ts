@@ -8,6 +8,17 @@ const rawApiUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https
 
 const cleanHost = (rawApiUrl || '').trim().replace(/\/+$/, '');
 export const API_BASE = cleanHost ? (cleanHost.endsWith('/api') ? cleanHost : `${cleanHost}/api`) : '/api';
+export const API_HOST = cleanHost.replace(/\/api\/?$/, '');
+
+export function getOAuthAuthorizationUrl(startUrl: string): string {
+  if (!startUrl) return '';
+  if (startUrl.startsWith('http://') || startUrl.startsWith('https://')) {
+    return startUrl;
+  }
+  const host = API_HOST || (typeof window !== 'undefined' ? window.location.origin : '');
+  const normalizedPath = startUrl.startsWith('/') ? startUrl : `/${startUrl}`;
+  return `${host}${normalizedPath}`;
+}
 
 export const WAKE_UP_TOAST_MESSAGE = 'Waking up the server, this can take up to a minute';
 
