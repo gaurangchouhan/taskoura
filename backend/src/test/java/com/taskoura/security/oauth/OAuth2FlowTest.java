@@ -615,5 +615,43 @@ class OAuth2FlowTest {
 
         assertThat(response.getRedirectedUrl()).isEqualTo("https://taskoura.vercel.app/app/profile?link_error=ACCESS_DENIED");
     }
+
+    @Test
+    @DisplayName("Failure handler diagnostics correctly extract provider, failure stage, and error details")
+    void testFailureHandler_Diagnostics() throws IOException {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/login/oauth2/code/github");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        org.springframework.web.client.HttpClientErrorException rootCause =
+                org.springframework.web.client.HttpClientErrorException.create(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED,
+                        "Unauthorized",
+                        org.springframework.http.HttpHeaders.EMPTY,
+                        new byte[0],
+                        null
+                );
+
+        org.springframework.security.oauth2.core.OAuth2Error error =
+                new org.springframework.security.oauth2.core.OAuth2Error(
+                        "invalid_token_response",
+                        "An error occurred while attempting to retrieve the OAuth 2.0 Access Token Response: 401 Unauthorized: [no body]",
+                        null
+                );
+        org.springframework.security.oauth2.core.OAuth2AuthenticationException ex =
+                new org.springframework.security.oauth2.core.OAuth2AuthenticationException(error, rootCause);
+
+        // Test helper extraction
+        assertThat(failureHandler.resolveRegistrationId(request)).isEqualTo("github");
+        assertThat(failureHandler.resolveFailureStage(request, ex)).isEqualTo("TOKEN_EXCHANGE");
+
+        MockHttpServletRequest googleRequest = new MockHttpServletRequest();
+        googleRequest.setRequestURI("/login/oauth2/code/google");
+        assertThat(failureHandler.resolveRegistrationId(googleRequest)).isEqualTo("google");
+
+        // Verify handling executes cleanly and redirects to PROVIDER_ERROR without revealing tokens
+        failureHandler.onAuthenticationFailure(request, response, ex);
+        assertThat(response.getRedirectedUrl()).isEqualTo("https://taskoura.vercel.app/auth/callback?error=PROVIDER_ERROR");
+    }
 }
 

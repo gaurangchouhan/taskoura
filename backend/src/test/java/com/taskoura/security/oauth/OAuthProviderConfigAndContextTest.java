@@ -93,8 +93,30 @@ public class OAuthProviderConfigAndContextTest {
 
         DynamicClientRegistrationRepository dynamicRepo = (DynamicClientRegistrationRepository) repo;
         assertThat(dynamicRepo.getConfiguredProviderKeys()).containsExactlyInAnyOrder("google", "github");
-        assertThat(dynamicRepo.findByRegistrationId("google")).isNotNull();
-        assertThat(dynamicRepo.findByRegistrationId("github")).isNotNull();
+        ClientRegistration google = dynamicRepo.findByRegistrationId("google");
+        ClientRegistration github = dynamicRepo.findByRegistrationId("github");
+
+        assertThat(google).isNotNull();
+        assertThat(google.getRegistrationId()).isEqualTo("google");
+        assertThat(google.getClientId()).isEqualTo("google-id");
+        assertThat(google.getClientSecret()).isEqualTo("google-secret");
+        assertThat(google.getClientAuthenticationMethod()).isEqualTo(org.springframework.security.oauth2.core.ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+        assertThat(google.getAuthorizationGrantType()).isEqualTo(org.springframework.security.oauth2.core.AuthorizationGrantType.AUTHORIZATION_CODE);
+        assertThat(google.getRedirectUri()).isEqualTo("{baseUrl}/login/oauth2/code/{registrationId}");
+        assertThat(google.getScopes()).containsExactlyInAnyOrder("openid", "profile", "email");
+        assertThat(google.getProviderDetails().getAuthorizationUri()).isEqualTo("https://accounts.google.com/o/oauth2/v2/auth");
+        assertThat(google.getProviderDetails().getTokenUri()).isEqualTo("https://www.googleapis.com/oauth2/v4/token");
+
+        assertThat(github).isNotNull();
+        assertThat(github.getRegistrationId()).isEqualTo("github");
+        assertThat(github.getClientId()).isEqualTo("github-id");
+        assertThat(github.getClientSecret()).isEqualTo("github-secret");
+        assertThat(github.getClientAuthenticationMethod()).isEqualTo(org.springframework.security.oauth2.core.ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+        assertThat(github.getAuthorizationGrantType()).isEqualTo(org.springframework.security.oauth2.core.AuthorizationGrantType.AUTHORIZATION_CODE);
+        assertThat(github.getRedirectUri()).isEqualTo("{baseUrl}/login/oauth2/code/{registrationId}");
+        assertThat(github.getScopes()).containsExactlyInAnyOrder("read:user", "user:email");
+        assertThat(github.getProviderDetails().getAuthorizationUri()).isEqualTo("https://github.com/login/oauth/authorize");
+        assertThat(github.getProviderDetails().getTokenUri()).isEqualTo("https://github.com/login/oauth/access_token");
     }
 
     @Test

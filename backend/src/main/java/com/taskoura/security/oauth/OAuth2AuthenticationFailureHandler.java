@@ -32,10 +32,41 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
         String targetFrontend = resolveFrontendUrl(request, response);
         try {
             String errorCode = determineErrorCode(request, exception);
-            log.warn("OAuth authentication failed: mappedCode={}, exceptionType={}, message={}",
+            String provider = resolveRegistrationId(request);
+            String stage = resolveFailureStage(request, exception);
+            String exceptionType = exception != null ? exception.getClass().getSimpleName() : "null";
+            String oauthErrorCode = null;
+            String oauthErrorDesc = null;
+            Integer httpStatusCode = null;
+            String wwwAuthenticate = null;
+
+            if (exception instanceof OAuth2AuthenticationException oae) {
+                if (oae.getError() != null) {
+                    oauthErrorCode = oae.getError().getErrorCode();
+                    oauthErrorDesc = oae.getError().getDescription();
+                }
+                if (oae.getCause() instanceof org.springframework.web.client.HttpStatusCodeException hsce) {
+                    httpStatusCode = hsce.getStatusCode().value();
+                    if (hsce.getResponseHeaders() != null) {
+                        wwwAuthenticate = hsce.getResponseHeaders().getFirst("WWW-Authenticate");
+                    }
+                }
+            } else if (exception != null && exception.getCause() instanceof org.springframework.web.client.HttpStatusCodeException hsce) {
+                httpStatusCode = hsce.getStatusCode().value();
+                if (hsce.getResponseHeaders() != null) {
+                    wwwAuthenticate = hsce.getResponseHeaders().getFirst("WWW-Authenticate");
+                }
+            }
+
+            log.warn("OAuth authentication failed: provider={}, stage={}, mappedCode={}, exceptionType={}, oauthErrorCode={}, oauthErrorDesc={}, httpStatus={}, wwwAuthenticate={}",
+                    provider,
+                    stage,
                     errorCode,
-                    exception != null ? exception.getClass().getSimpleName() : "null",
-                    exception != null ? exception.getMessage() : "null");
+                    exceptionType,
+                    oauthErrorCode,
+                    oauthErrorDesc,
+                    httpStatusCode != null ? httpStatusCode : "n/a",
+                    wwwAuthenticate != null ? wwwAuthenticate : "none");
 
             String linkToken = CookieUtils.getCookie(request, "oauth2_link_token")
                     .map(jakarta.servlet.http.Cookie::getValue)
@@ -130,5 +161,56 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
         }
 
         return "PROVIDER_ERROR";
+    }
+
+    public String resolveRegistrationId(HttpServletRequest request) {
+        if (request == null) {
+            return "unknown";
+        }
+        String uri = request.getRequestURI();
+        if (uri != null) {
+            String loginPrefix = "/login/oauth2/code/";
+            int idx = uri.indexOf(loginPrefix);
+            if (idx != -1) {
+                String sub = uri.substring(idx + loginPrefix.length());
+                int slash = sub.indexOf('/');
+                return (slash != -1 ? sub.substring(0, slash) : sub).trim().toLowerCase();
+            }
+            String authPrefix = "/oauth2/authorization/";
+            int authIdx = uri.indexOf(authPrefix);
+            if (authIdx != -1) {
+                String sub = uri.substring(authIdx + authPrefix.length());
+                int slash = sub.indexOf('/');
+                return (slash != -1 ? sub.substring(0, slash) : sub).trim().toLowerCase();
+            }
+        }
+        String param = request.getParameter("registrationId");
+        if (param != null && !param.isBlank()) {
+            return param.trim().toLowerCase();
+        }
+        return "unknown";
+    }
+
+    public String resolveFailureStage(HttpServletRequest request, AuthenticationException exception) {
+        String msg = exception != null && exception.getMessage() != null ? exception.getMessage().toLowerCase() : "";
+        if (msg.contains("invalid_token_response") || msg.contains("access token response") || msg.contains("token response")) {
+            return "TOKEN_EXCHANGE";
+        }
+        if (msg.contains("userinfo") || msg.contains("user_info") || msg.contains("user info") || msg.contains("loaduser")) {
+            return "USER_INFO";
+        }
+        if (request != null) {
+            String uri = request.getRequestURI();
+            if (uri != null && uri.contains("/login/oauth2/code/")) {
+                if (request.getParameter("error") != null) {
+                    return "AUTHORIZATION_RESPONSE";
+                }
+                return "TOKEN_EXCHANGE";
+            }
+            if (uri != null && uri.contains("/oauth2/authorization/")) {
+                return "AUTHORIZATION_REQUEST";
+            }
+        }
+        return "AUTHENTICATION";
     }
 }
