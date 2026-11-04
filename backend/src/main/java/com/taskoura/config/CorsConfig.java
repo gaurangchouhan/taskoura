@@ -27,9 +27,9 @@ public class CorsConfig {
     private final String allowedOriginPatterns;
 
     public CorsConfig(
-            @Value("${app.frontend-url:${FRONTEND_URL:http://localhost:5173}}") String frontendUrl,
+            @Value("${app.frontend-url:${FRONTEND_URL:https://taskoura.vercel.app}}") String frontendUrl,
             @Value("${cors.allowed-origins:}") String allowedOrigins,
-            @Value("${cors.allowed-origin-patterns:https://*.vercel.app,http://localhost:[*],http://127.0.0.1:[*]}") String allowedOriginPatterns) {
+            @Value("${cors.allowed-origin-patterns:https://*.vercel.app,https://taskoura.vercel.app,http://localhost:[*],http://127.0.0.1:[*]}") String allowedOriginPatterns) {
         this.frontendUrl = frontendUrl;
         this.allowedOrigins = allowedOrigins;
         this.allowedOriginPatterns = allowedOriginPatterns;
@@ -39,7 +39,7 @@ public class CorsConfig {
      * Default constructor for fallback instantiation when standalone.
      */
     public CorsConfig() {
-        this("http://localhost:5173", "", "https://*.vercel.app,http://localhost:[*],http://127.0.0.1:[*]");
+        this("https://taskoura.vercel.app", "", "https://*.vercel.app,https://taskoura.vercel.app,http://localhost:[*],http://127.0.0.1:[*]");
     }
 
     @Bean

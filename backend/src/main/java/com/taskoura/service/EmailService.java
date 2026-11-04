@@ -62,7 +62,7 @@ public class EmailService {
     @Value("${MAIL_FROM_NAME:${mail.from-name:Taskoura}}")
     private String fromName;
 
-    @Value("${FRONTEND_URL:${app.frontend-url:http://localhost:5173}}")
+    @Value("${FRONTEND_URL:${app.frontend-url:https://taskoura.vercel.app}}")
     private String frontendUrl;
 
     @Value("${APP_NAME:${app.name:Taskoura}}")

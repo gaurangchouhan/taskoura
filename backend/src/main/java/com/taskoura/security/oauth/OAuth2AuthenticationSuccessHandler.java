@@ -35,12 +35,12 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             OAuthUserService oAuthUserService,
             OAuthCodeService oAuthCodeService,
             @Autowired(required = false) OAuthLinkTokenService oAuthLinkTokenService,
-            @Value("${FRONTEND_URL:${app.frontend-url:http://localhost:5173}}") String frontendUrl
+            @Value("${FRONTEND_URL:${app.frontend-url:https://taskoura.vercel.app}}") String frontendUrl
     ) {
         this.oAuthUserService = oAuthUserService;
         this.oAuthCodeService = oAuthCodeService;
         this.oAuthLinkTokenService = oAuthLinkTokenService;
-        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
+        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "https://taskoura.vercel.app";
     }
 
     public OAuth2AuthenticationSuccessHandler(
@@ -75,11 +75,12 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
+        String targetFrontend = resolveFrontendUrl(request, response);
         try {
             if (!(authentication instanceof OAuth2AuthenticationToken authToken)) {
                 log.warn("Authentication is not an OAuth2AuthenticationToken: {}",
                         authentication != null ? authentication.getClass().getName() : "null");
-                response.sendRedirect(frontendUrl + "/auth/callback?error=PROVIDER_ERROR");
+                response.sendRedirect(targetFrontend + "/auth/callback?error=PROVIDER_ERROR");
                 return;
             }
 
@@ -93,7 +94,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
             if (linkToken != null && !linkToken.isBlank()) {
                 CookieUtils.deleteCookie(request, response, "oauth2_link_token");
-                handleAccountLinking(request, response, provider, oauth2User, linkToken.trim());
+                handleAccountLinking(request, response, targetFrontend, provider, oauth2User, linkToken.trim());
                 return;
             }
 
@@ -106,19 +107,19 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
             if (providerUserId == null || providerUserId.isBlank()) {
                 log.warn("OAuth providerUserId is missing for provider {}", provider);
-                response.sendRedirect(frontendUrl + "/auth/callback?error=PROVIDER_ERROR");
+                response.sendRedirect(targetFrontend + "/auth/callback?error=PROVIDER_ERROR");
                 return;
             }
 
             if (email == null || email.isBlank()) {
                 log.info("OAuth login failed for provider {}: email is missing", provider);
-                response.sendRedirect(frontendUrl + "/auth/callback?error=EMAIL_MISSING");
+                response.sendRedirect(targetFrontend + "/auth/callback?error=EMAIL_MISSING");
                 return;
             }
 
             if (!emailVerified) {
                 log.info("OAuth login failed for provider {}: email is not verified", provider);
-                response.sendRedirect(frontendUrl + "/auth/callback?error=EMAIL_UNVERIFIED");
+                response.sendRedirect(targetFrontend + "/auth/callback?error=EMAIL_UNVERIFIED");
                 return;
             }
 
@@ -133,32 +134,33 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
             if (result.status() == OAuthUserService.LoginStatus.ACCOUNT_EXISTS_USE_PASSWORD) {
                 log.info("OAuth login rejected for provider {}: account exists with same email, password required", provider);
-                response.sendRedirect(frontendUrl + "/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD");
+                response.sendRedirect(targetFrontend + "/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD");
                 return;
             }
 
             String code = oAuthCodeService.generateAndSaveCode(result.user().getId());
-            response.sendRedirect(frontendUrl + "/auth/callback?code=" + code);
+            response.sendRedirect(targetFrontend + "/auth/callback?code=" + code);
 
         } catch (Exception e) {
             log.error("Unexpected error during OAuth authentication success handling", e);
-            response.sendRedirect(frontendUrl + "/auth/callback?error=PROVIDER_ERROR");
+            response.sendRedirect(targetFrontend + "/auth/callback?error=PROVIDER_ERROR");
         }
     }
 
     private void handleAccountLinking(HttpServletRequest request,
                                        HttpServletResponse response,
+                                       String targetFrontend,
                                        String provider,
                                        OAuth2User oauth2User,
                                        String linkToken) throws IOException {
         if (oAuthLinkTokenService == null) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=LINK_EXPIRED");
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=LINK_EXPIRED");
             return;
         }
 
         OAuthLinkTokenService.LinkTokenData linkData = oAuthLinkTokenService.validateAndConsumeLinkToken(linkToken);
         if (linkData == null) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=LINK_EXPIRED");
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=LINK_EXPIRED");
             return;
         }
 
@@ -167,12 +169,12 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         boolean emailVerified = extractEmailVerified(provider, oauth2User);
 
         if (email == null || email.isBlank()) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=EMAIL_MISSING");
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=EMAIL_MISSING");
             return;
         }
 
         if (!emailVerified) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=EMAIL_UNVERIFIED");
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=EMAIL_UNVERIFIED");
             return;
         }
 
@@ -181,14 +183,35 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         );
 
         if (linkStatus == OAuthUserService.LinkStatus.ALREADY_LINKED) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=ALREADY_LINKED");
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=ALREADY_LINKED");
             return;
         } else if (linkStatus == OAuthUserService.LinkStatus.IDENTITY_LINKED_TO_OTHER_ACCOUNT) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=IDENTITY_LINKED_TO_OTHER_ACCOUNT");
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=IDENTITY_LINKED_TO_OTHER_ACCOUNT");
             return;
         }
 
-        response.sendRedirect(frontendUrl + "/app/profile?linked=" + provider);
+        response.sendRedirect(targetFrontend + "/app/profile?linked=" + provider);
+    }
+
+    private String resolveFrontendUrl(HttpServletRequest request, HttpServletResponse response) {
+        if (request != null) {
+            var cookieOpt = CookieUtils.getCookie(request, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+            if (cookieOpt.isPresent()) {
+                String val = cookieOpt.get().getValue();
+                if (response != null) {
+                    CookieUtils.deleteCookie(request, response, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+                }
+                if (val != null && !val.isBlank()) {
+                    String clean = val.trim().replaceAll("/+$", "");
+                    if ((clean.startsWith("https://") && clean.contains("vercel.app"))
+                            || clean.startsWith("http://localhost")
+                            || clean.startsWith("http://127.0.0.1")) {
+                        return clean;
+                    }
+                }
+            }
+        }
+        return this.frontendUrl;
     }
 
     private String extractProviderUserId(String provider, OAuth2User user) {

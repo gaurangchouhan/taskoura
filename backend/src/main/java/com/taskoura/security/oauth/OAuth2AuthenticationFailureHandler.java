@@ -20,15 +20,16 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
     private final String frontendUrl;
 
     public OAuth2AuthenticationFailureHandler(
-            @Value("${FRONTEND_URL:${app.frontend-url:http://localhost:5173}}") String frontendUrl
+            @Value("${FRONTEND_URL:${app.frontend-url:https://taskoura.vercel.app}}") String frontendUrl
     ) {
-        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
+        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "https://taskoura.vercel.app";
     }
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request,
                                         HttpServletResponse response,
                                         AuthenticationException exception) throws IOException {
+        String targetFrontend = resolveFrontendUrl(request, response);
         try {
             String errorCode = determineErrorCode(request, exception);
             log.warn("OAuth authentication failed: mappedCode={}, exceptionType={}, message={}",
@@ -42,19 +43,40 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
 
             if (linkToken != null && !linkToken.isBlank()) {
                 CookieUtils.deleteCookie(request, response, "oauth2_link_token");
-                response.sendRedirect(frontendUrl + "/app/profile?link_error=" + errorCode);
+                response.sendRedirect(targetFrontend + "/app/profile?link_error=" + errorCode);
                 return;
             }
 
-            String targetUrl = frontendUrl + "/auth/callback?error=" + errorCode;
+            String targetUrl = targetFrontend + "/auth/callback?error=" + errorCode;
             response.sendRedirect(targetUrl);
         } catch (Exception e) {
             log.error("Unexpected error in OAuth authentication failure handler", e);
             try {
-                response.sendRedirect(frontendUrl + "/auth/callback?error=PROVIDER_ERROR");
+                response.sendRedirect(targetFrontend + "/auth/callback?error=PROVIDER_ERROR");
             } catch (Exception ignored) {
             }
         }
+    }
+
+    private String resolveFrontendUrl(HttpServletRequest request, HttpServletResponse response) {
+        if (request != null) {
+            var cookieOpt = CookieUtils.getCookie(request, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+            if (cookieOpt.isPresent()) {
+                String val = cookieOpt.get().getValue();
+                if (response != null) {
+                    CookieUtils.deleteCookie(request, response, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+                }
+                if (val != null && !val.isBlank()) {
+                    String clean = val.trim().replaceAll("/+$", "");
+                    if ((clean.startsWith("https://") && clean.contains("vercel.app"))
+                            || clean.startsWith("http://localhost")
+                            || clean.startsWith("http://127.0.0.1")) {
+                        return clean;
+                    }
+                }
+            }
+        }
+        return this.frontendUrl;
     }
 
     public String determineErrorCode(HttpServletRequest request, AuthenticationException exception) {

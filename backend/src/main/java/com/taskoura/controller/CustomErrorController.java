@@ -1,6 +1,8 @@
 package com.taskoura.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskoura.security.oauth.CookieUtils;
+import com.taskoura.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,10 +32,10 @@ public class CustomErrorController implements ErrorController {
 
     @Autowired
     public CustomErrorController(
-            @Value("${FRONTEND_URL:${app.frontend-url:http://localhost:5173}}") String frontendUrl,
+            @Value("${FRONTEND_URL:${app.frontend-url:https://taskoura.vercel.app}}") String frontendUrl,
             @Autowired(required = false) ObjectMapper objectMapper
     ) {
-        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
+        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "https://taskoura.vercel.app";
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
     }
 
@@ -47,7 +49,8 @@ public class CustomErrorController implements ErrorController {
         // Intercept any error on OAuth authorization or callback endpoints and safely redirect to frontend
         if (errorUri != null && (errorUri.startsWith("/oauth2/") || errorUri.startsWith("/login/oauth2/"))) {
             log.warn("OAuth flow error intercepted at /error for URI: {}. Redirecting to frontend callback with PROVIDER_ERROR.", errorUri);
-            response.sendRedirect(frontendUrl + "/auth/callback?error=PROVIDER_ERROR");
+            String targetFrontend = resolveFrontendUrl(request, response);
+            response.sendRedirect(targetFrontend + "/auth/callback?error=PROVIDER_ERROR");
             return;
         }
 
@@ -71,5 +74,25 @@ public class CustomErrorController implements ErrorController {
 
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
-}
 
+    private String resolveFrontendUrl(HttpServletRequest request, HttpServletResponse response) {
+        if (request != null) {
+            var cookieOpt = CookieUtils.getCookie(request, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+            if (cookieOpt.isPresent()) {
+                String val = cookieOpt.get().getValue();
+                if (response != null) {
+                    CookieUtils.deleteCookie(request, response, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+                }
+                if (val != null && !val.isBlank()) {
+                    String clean = val.trim().replaceAll("/+$", "");
+                    if ((clean.startsWith("https://") && clean.contains("vercel.app"))
+                            || clean.startsWith("http://localhost")
+                            || clean.startsWith("http://127.0.0.1")) {
+                        return clean;
+                    }
+                }
+            }
+        }
+        return this.frontendUrl;
+    }
+}

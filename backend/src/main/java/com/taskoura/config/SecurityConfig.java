@@ -8,6 +8,8 @@ import com.taskoura.security.oauth.CustomOAuth2UserService;
 import com.taskoura.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.taskoura.security.oauth.OAuth2AuthenticationFailureHandler;
 import com.taskoura.security.oauth.OAuth2AuthenticationSuccessHandler;
+import com.taskoura.security.oauth.CookieUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,13 +49,13 @@ public class SecurityConfig {
             JwtAuthFilter jwtAuthFilter,
             @Autowired(required = false) ObjectMapper objectMapper,
             @Autowired(required = false) CorsConfigurationSource corsConfigurationSource,
-            @Value("${FRONTEND_URL:${app.frontend-url:http://localhost:5173}}") String frontendUrl) {
+            @Value("${FRONTEND_URL:${app.frontend-url:https://taskoura.vercel.app}}") String frontendUrl) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         this.corsConfigurationSource = corsConfigurationSource != null
                 ? corsConfigurationSource
                 : new CorsConfig().corsConfigurationSource();
-        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
+        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "https://taskoura.vercel.app";
     }
 
     @Bean
@@ -114,10 +116,10 @@ public class SecurityConfig {
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
-                    response.sendRedirect(frontendUrl + "/auth/callback?error=STATE_INVALID");
+                    response.sendRedirect(resolveFrontendUrl(request, response) + "/auth/callback?error=STATE_INVALID");
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
-                    response.sendRedirect(frontendUrl + "/auth/callback?error=ACCESS_DENIED");
+                    response.sendRedirect(resolveFrontendUrl(request, response) + "/auth/callback?error=ACCESS_DENIED");
                 })
             );
 
@@ -208,5 +210,26 @@ public class SecurityConfig {
             authProvider.setPasswordEncoder(passwordEncoder);
         }
         return new ProviderManager(authProvider);
+    }
+
+    private String resolveFrontendUrl(HttpServletRequest request, HttpServletResponse response) {
+        if (request != null) {
+            var cookieOpt = CookieUtils.getCookie(request, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+            if (cookieOpt.isPresent()) {
+                String val = cookieOpt.get().getValue();
+                if (response != null) {
+                    CookieUtils.deleteCookie(request, response, HttpCookieOAuth2AuthorizationRequestRepository.OAUTH2_FRONTEND_URL_COOKIE_NAME);
+                }
+                if (val != null && !val.isBlank()) {
+                    String clean = val.trim().replaceAll("/+$", "");
+                    if ((clean.startsWith("https://") && clean.contains("vercel.app"))
+                            || clean.startsWith("http://localhost")
+                            || clean.startsWith("http://127.0.0.1")) {
+                        return clean;
+                    }
+                }
+            }
+        }
+        return this.frontendUrl;
     }
 }

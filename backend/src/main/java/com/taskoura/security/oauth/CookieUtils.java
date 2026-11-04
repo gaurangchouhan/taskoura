@@ -27,10 +27,18 @@ public final class CookieUtils {
     }
 
     public static void addCookie(HttpServletResponse response, String name, String value, int maxAgeSeconds) {
+        addCookie(null, response, name, value, maxAgeSeconds);
+    }
+
+    public static void addCookie(HttpServletRequest request, HttpServletResponse response, String name, String value, int maxAgeSeconds) {
+        boolean isHttps = request != null && (request.isSecure()
+                || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"))
+                || "https".equalsIgnoreCase(request.getScheme()));
+
         ResponseCookie responseCookie = ResponseCookie.from(name, value)
                 .path("/")
                 .httpOnly(true)
-                .secure(false) // allows testing on localhost and behind proxy
+                .secure(isHttps)
                 .sameSite("Lax")
                 .maxAge(maxAgeSeconds)
                 .build();
