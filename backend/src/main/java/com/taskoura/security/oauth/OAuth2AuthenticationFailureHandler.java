@@ -29,6 +29,7 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
     public void onAuthenticationFailure(HttpServletRequest request,
                                         HttpServletResponse response,
                                         AuthenticationException exception) throws IOException {
+<<<<<<< HEAD
         try {
             String errorCode = determineErrorCode(request, exception);
             log.warn("OAuth authentication failed: mappedCode={}, exceptionType={}, message={}",
@@ -55,6 +56,24 @@ public class OAuth2AuthenticationFailureHandler implements AuthenticationFailure
             } catch (Exception ignored) {
             }
         }
+=======
+        String errorCode = determineErrorCode(request, exception);
+        log.warn("OAuth authentication failed: mappedCode={}, exceptionType={}, message={}",
+                errorCode, exception.getClass().getSimpleName(), exception.getMessage());
+
+        String linkToken = CookieUtils.getCookie(request, "oauth2_link_token")
+                .map(jakarta.servlet.http.Cookie::getValue)
+                .orElse(request != null ? request.getParameter("link_token") : null);
+
+        if (linkToken != null && !linkToken.isBlank()) {
+            CookieUtils.deleteCookie(request, response, "oauth2_link_token");
+            response.sendRedirect(frontendUrl + "/app/profile?link_error=" + errorCode);
+            return;
+        }
+
+        String targetUrl = frontendUrl + "/auth/callback?error=" + errorCode;
+        response.sendRedirect(targetUrl);
+>>>>>>> origin/main
     }
 
     public String determineErrorCode(HttpServletRequest request, AuthenticationException exception) {

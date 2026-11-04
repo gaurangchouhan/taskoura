@@ -257,6 +257,7 @@ class OAuth2FlowTest {
     }
 
     @Test
+<<<<<<< HEAD
     @DisplayName("Missing provider user id / sub redirects with PROVIDER_ERROR")
     void testSuccessHandler_MissingProviderUserId_RedirectsProviderError() throws IOException {
         Map<String, Object> attrs = Map.of(
@@ -350,6 +351,8 @@ class OAuth2FlowTest {
     }
 
     @Test
+=======
+>>>>>>> origin/main
     @DisplayName("Redirect target strictly uses FRONTEND_URL and ignores request redirect parameters/headers")
     void testRedirectTargetNeverComesFromRequest() throws IOException {
         UUID newUserId = UUID.randomUUID();

@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FolderGit2, ArrowRight, Lock, Mail, AlertCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
 import { useLogin, useResendOtp } from '../hooks/useAuthApi';
 import { getErrorMessage } from '../lib/errors';
+import { apiClient } from '../services/api';
+import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
+import { OAUTH_ERROR_MESSAGES } from './OAuthCallbackPage';
 
 export const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -14,15 +17,26 @@ export const LoginPage: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const reasonParam = searchParams.get('reason');
   const sessionReasonParam = searchParams.get('sessionReason');
+  const errorParam = searchParams.get('error');
   const emailParam = searchParams.get('email') || (location.state as { email?: string } | null)?.email || '';
 
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (errorParam) {
+      return OAUTH_ERROR_MESSAGES[errorParam] || `Authentication failed: ${errorParam}`;
+    }
+    return null;
+  });
   const [is403Unverified, setIs403Unverified] = useState(false);
 
   const loginMutation = useLogin();
   const resendMutation = useResendOtp();
+
+  // Warm up Render backend on mount
+  useEffect(() => {
+    apiClient.get('/health').catch(() => {});
+  }, []);
 
   let sessionMessage: string | null = null;
   if (reasonParam === 'timeout' || reasonParam === 'idle') {
@@ -203,6 +217,9 @@ export const LoginPage: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Social Auth */}
+          <SocialAuthButtons action="signin" />
 
           {/* Quick Demo Helper */}
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">

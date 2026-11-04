@@ -71,6 +71,12 @@ public class ProfileDtos {
 
     public record UpdateProfileRequest(String name) {}
 
+    public record UserProviderDto(
+            String provider,
+            String email,
+            LocalDateTime linkedAt
+    ) {}
+
     public record UserProfileResponse(
             UUID id,
             String name,
@@ -78,11 +84,17 @@ public class ProfileDtos {
             boolean verified,
             LocalDateTime createdAt,
             ProfileDataDto profile,
-            List<String> providers
+            List<UserProviderDto> providers,
+            boolean passwordLoginEnabled
     ) {
         // Backward-compatible constructor for existing tests and code
         public UserProfileResponse(UUID id, String name, String email, boolean verified, LocalDateTime createdAt) {
-            this(id, name, email, verified, createdAt, ProfileDataDto.defaults(), Collections.emptyList());
+            this(id, name, email, verified, createdAt, ProfileDataDto.defaults(), Collections.emptyList(), true);
+        }
+
+        public UserProfileResponse(UUID id, String name, String email, boolean verified, LocalDateTime createdAt,
+                                   ProfileDataDto profile, List<UserProviderDto> providers) {
+            this(id, name, email, verified, createdAt, profile, providers, true);
         }
     }
 }

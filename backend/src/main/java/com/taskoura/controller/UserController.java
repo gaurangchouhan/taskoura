@@ -54,4 +54,13 @@ public class UserController {
         userService.deleteAvatar(authentication.getName());
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/me/providers/{provider}")
+    public ResponseEntity<Void> disconnectProvider(
+            @PathVariable("provider") String provider,
+            Authentication authentication
+    ) {
+        userService.disconnectProvider(authentication.getName(), provider);
+        return ResponseEntity.noContent().build();
+    }
 }

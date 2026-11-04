@@ -1,5 +1,11 @@
 import { apiClient } from '../../services/api';
-import { UserProfileResponse, UpdateProfileRequest, AvatarResponse } from '../../types/profile';
+import {
+  UserProfileResponse,
+  UpdateProfileRequest,
+  AvatarResponse,
+  OAuthProvidersResponse,
+  OAuthLinkStartResponse,
+} from '../../types/profile';
 
 /**
  * Fetch the authenticated user's profile details.
@@ -47,10 +53,39 @@ export async function deleteAvatar(): Promise<void> {
   await apiClient.delete('/users/me/avatar');
 }
 
+/**
+ * Fetch available configured OAuth providers.
+ * GET /api/auth/oauth/providers -> { providers: [{ key, label, startUrl }] }
+ */
+export async function getOAuthProviders(): Promise<OAuthProvidersResponse> {
+  const { data } = await apiClient.get<OAuthProvidersResponse>('/auth/oauth/providers');
+  return data;
+}
+
+/**
+ * Start OAuth account linking for a provider.
+ * POST /api/auth/oauth/link/start { provider } -> { url }
+ */
+export async function startOAuthLink(provider: string): Promise<OAuthLinkStartResponse> {
+  const { data } = await apiClient.post<OAuthLinkStartResponse>('/auth/oauth/link/start', { provider });
+  return data;
+}
+
+/**
+ * Disconnect an OAuth provider.
+ * DELETE /api/users/me/providers/{provider} -> 204
+ */
+export async function disconnectProvider(provider: string): Promise<void> {
+  await apiClient.delete(`/users/me/providers/${encodeURIComponent(provider.toLowerCase())}`);
+}
+
 export default {
   getProfile,
   updateProfile,
   updateProfileDetails,
   uploadAvatar,
   deleteAvatar,
+  getOAuthProviders,
+  startOAuthLink,
+  disconnectProvider,
 };

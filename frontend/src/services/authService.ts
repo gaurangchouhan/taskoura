@@ -8,8 +8,18 @@ import {
   AuthResponse,
   SessionInfo,
 } from '../types/auth';
+import { OAuthProvidersResponse } from '../types/profile';
 
 export const authService = {
+  exchangeOAuthCode: async (code: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post<AuthResponse>('/auth/oauth/exchange', { code });
+    return data;
+  },
+
+  getOAuthProviders: async (): Promise<OAuthProvidersResponse> => {
+    const { data } = await apiClient.get<OAuthProvidersResponse>('/auth/oauth/providers');
+    return data;
+  },
   register: async (payload: RegisterRequest): Promise<MessageResponse> => {
     const { data } = await apiClient.post<MessageResponse>('/auth/register', payload);
     return data;

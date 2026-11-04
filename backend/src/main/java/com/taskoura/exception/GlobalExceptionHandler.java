@@ -97,8 +97,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(ConflictException e, HttpServletRequest request) {
+        String code = e.getCode() != null ? e.getCode() : "CONFLICT";
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(buildBody(HttpStatus.CONFLICT, "CONFLICT", e.getMessage(), request, null));
+                .body(buildBody(HttpStatus.CONFLICT, code, e.getMessage(), request, null));
     }
 
     @ExceptionHandler(BadGatewayException.class)

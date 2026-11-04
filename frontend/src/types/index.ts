@@ -19,7 +19,8 @@ export interface User {
   verified?: boolean;
   createdAt?: string;
   profile?: import('./profile').UserProfileData;
-  providers?: string[];
+  providers?: import('./profile').UserProvider[] | string[];
+  passwordLoginEnabled?: boolean;
   avatarUrl?: string | null;
 }
 

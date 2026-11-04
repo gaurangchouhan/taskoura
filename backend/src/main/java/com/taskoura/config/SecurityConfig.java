@@ -3,15 +3,24 @@ package com.taskoura.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.taskoura.security.CustomUserDetailsService;
 import com.taskoura.security.JwtAuthFilter;
+import com.taskoura.security.oauth.CustomOAuth2AuthorizationRequestResolver;
+import com.taskoura.security.oauth.CustomOAuth2UserService;
+import com.taskoura.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.taskoura.security.oauth.OAuth2AuthenticationFailureHandler;
+import com.taskoura.security.oauth.OAuth2AuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 >>>>>>> Stashed changes
+=======
+import org.springframework.core.annotation.Order;
+>>>>>>> origin/main
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -30,7 +40,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -93,9 +102,12 @@ public class SecurityConfig {
     }
 
     @Bean
+<<<<<<< HEAD
 <<<<<<< Updated upstream
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 =======
+=======
+>>>>>>> origin/main
     @Order(1)
     public SecurityFilterChain oauthSecurityFilterChain(
             HttpSecurity http,
@@ -112,6 +124,7 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
+<<<<<<< HEAD
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
@@ -120,6 +133,8 @@ public class SecurityConfig {
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     response.sendRedirect(frontendUrl + "/auth/callback?error=ACCESS_DENIED");
                 })
+=======
+>>>>>>> origin/main
             );
 
         boolean hasProviders = false;
@@ -165,7 +180,10 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> origin/main
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
@@ -173,6 +191,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
+                    "/error",
                     "/api/health",
                     "/api/attachments/*/download",
                     "/api/auth/register",
@@ -180,7 +199,9 @@ public class SecurityConfig {
                     "/api/auth/resend-otp",
                     "/api/auth/login",
                     "/api/auth/forgot-password",
-                    "/api/auth/reset-password"
+                    "/api/auth/reset-password",
+                    "/api/auth/oauth/providers",
+                    "/api/auth/oauth/exchange"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

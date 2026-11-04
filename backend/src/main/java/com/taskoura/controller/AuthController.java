@@ -1,11 +1,15 @@
 package com.taskoura.controller;
 
 import com.taskoura.dto.*;
+import com.taskoura.dto.OAuthDtos.OAuthExchangeRequest;
+import com.taskoura.dto.OAuthDtos.OAuthProvidersResponse;
 import com.taskoura.entity.UserSession;
 import com.taskoura.exception.UnauthorizedException;
+import com.taskoura.security.oauth.OAuthExchangeRateLimiter;
 import com.taskoura.service.AuthService;
 import com.taskoura.service.SessionService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +22,42 @@ public class AuthController {
 
     private final AuthService authService;
     private final SessionService sessionService;
+    private final OAuthExchangeRateLimiter oAuthExchangeRateLimiter;
 
-    public AuthController(AuthService authService, SessionService sessionService) {
+    public AuthController(AuthService authService,
+                          SessionService sessionService,
+                          @Autowired(required = false) OAuthExchangeRateLimiter oAuthExchangeRateLimiter) {
         this.authService = authService;
         this.sessionService = sessionService;
+        this.oAuthExchangeRateLimiter = oAuthExchangeRateLimiter;
+    }
+
+    @GetMapping("/oauth/providers")
+    public ResponseEntity<OAuthProvidersResponse> getOAuthProviders() {
+        return ResponseEntity.ok(authService.getAvailableOAuthProviders());
+    }
+
+    @PostMapping("/oauth/link/start")
+    public ResponseEntity<com.taskoura.dto.OAuthDtos.OAuthLinkStartResponse> startOAuthLink(
+            @RequestBody com.taskoura.dto.OAuthDtos.OAuthLinkStartRequest request,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new UnauthorizedException("Authentication required");
+        }
+        return ResponseEntity.ok(authService.startOAuthLink(authentication.getName(), request.provider()));
+    }
+
+    @PostMapping("/oauth/exchange")
+    public ResponseEntity<AuthResponse> exchangeOAuthCode(
+            @RequestBody OAuthExchangeRequest request,
+            @RequestHeader(value = "User-Agent", required = false) String userAgent,
+            HttpServletRequest httpRequest) {
+        if (oAuthExchangeRateLimiter != null) {
+            String clientIp = resolveClientIp(httpRequest);
+            oAuthExchangeRateLimiter.checkRateLimit(clientIp);
+        }
+        return ResponseEntity.ok(authService.exchangeOAuthCode(request.code(), userAgent));
     }
 
     @PostMapping("/register")
@@ -90,5 +126,15 @@ public class AuthController {
             return us;
         }
         throw new UnauthorizedException("No active session found");
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        if (request == null) return "unknown";
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            int commaIdx = forwarded.indexOf(',');
+            return commaIdx != -1 ? forwarded.substring(0, commaIdx).trim() : forwarded.trim();
+        }
+        return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 }

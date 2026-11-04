@@ -16,6 +16,7 @@ import { PublicOnlyRoute } from './routes/PublicOnlyRoute';
 import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
 import { ProfilePage } from './features/profile/pages/ProfilePage';
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
 
 export const App: React.FC = () => {
   return (
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
 
         {/* Authentication & Verification Routes (Public Only) */}
+        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
         <Route
           path="/login"
           element={

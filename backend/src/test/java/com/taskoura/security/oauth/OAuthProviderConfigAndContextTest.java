@@ -21,6 +21,7 @@ import com.taskoura.security.JwtUtil;
 import com.taskoura.service.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+<<<<<<< HEAD
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +30,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import com.taskoura.security.CustomUserDetailsService;
+=======
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+>>>>>>> origin/main
 
 import java.time.Clock;
 import java.util.Optional;
@@ -131,17 +137,28 @@ public class OAuthProviderConfigAndContextTest {
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtUtil jwtUtil = mock(JwtUtil.class);
         SessionService sessionService = mock(SessionService.class);
+<<<<<<< HEAD
         AuthenticationManager authManager = mock(AuthenticationManager.class);
 
         // Case 1: Empty repo
         ClientRegistrationRepository emptyRepo = clientConfig.clientRegistrationRepository("", "", "", "");
         AuthService authServiceEmpty = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, emptyRepo);
+=======
+
+        // Case 1: Empty repo
+        ClientRegistrationRepository emptyRepo = clientConfig.clientRegistrationRepository("", "", "", "");
+        AuthService authServiceEmpty = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, emptyRepo);
+>>>>>>> origin/main
         OAuthProvidersResponse emptyResp = authServiceEmpty.getAvailableOAuthProviders();
         assertThat(emptyResp.providers()).isEmpty();
 
         // Case 2: Only Google
         ClientRegistrationRepository googleRepo = clientConfig.clientRegistrationRepository("gid", "gsecret", "", "");
+<<<<<<< HEAD
         AuthService authServiceGoogle = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, googleRepo);
+=======
+        AuthService authServiceGoogle = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, googleRepo);
+>>>>>>> origin/main
         OAuthProvidersResponse googleResp = authServiceGoogle.getAvailableOAuthProviders();
         assertThat(googleResp.providers()).hasSize(1);
         assertThat(googleResp.providers().get(0).key()).isEqualTo("google");
@@ -150,7 +167,11 @@ public class OAuthProviderConfigAndContextTest {
 
         // Case 3: Both
         ClientRegistrationRepository bothRepo = clientConfig.clientRegistrationRepository("gid", "gsecret", "ghid", "ghsecret");
+<<<<<<< HEAD
         AuthService authServiceBoth = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, bothRepo);
+=======
+        AuthService authServiceBoth = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, bothRepo);
+>>>>>>> origin/main
         OAuthProvidersResponse bothResp = authServiceBoth.getAvailableOAuthProviders();
         assertThat(bothResp.providers()).hasSize(2);
         assertThat(bothResp.providers().stream().map(p -> p.key()).toList()).containsExactly("google", "github");
@@ -165,6 +186,7 @@ public class OAuthProviderConfigAndContextTest {
         JwtUtil jwtUtil = mock(JwtUtil.class);
         SessionService sessionService = mock(SessionService.class);
 
+<<<<<<< HEAD
         CustomUserDetailsService userDetailsService = new CustomUserDetailsService(userRepo);
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
@@ -172,6 +194,9 @@ public class OAuthProviderConfigAndContextTest {
         AuthenticationManager authManager = new ProviderManager(authProvider);
 
         AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, null);
+=======
+        AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, null);
+>>>>>>> origin/main
 
         User oauthUser = User.builder()
                 .id(UUID.randomUUID())
@@ -231,10 +256,14 @@ public class OAuthProviderConfigAndContextTest {
 
         when(codeService.consumeCode("valid-code")).thenReturn(userId);
 
+<<<<<<< HEAD
         AuthenticationManager authManager = mock(AuthenticationManager.class);
         when(authManager.authenticate(any())).thenReturn(new UsernamePasswordAuthenticationToken("test@example.com", "password"));
 
         AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, codeService, null, null);
+=======
+        AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, codeService, null, null);
+>>>>>>> origin/main
 
         // 1. Regular password login
         AuthResponse loginResp = authService.login(new LoginRequest("test@example.com", "password"));

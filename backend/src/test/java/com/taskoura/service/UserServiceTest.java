@@ -39,6 +39,9 @@ class UserServiceTest {
     @Mock
     private AttachmentStorageService attachmentStorageService;
 
+    @Mock
+    private com.taskoura.repository.OAuthIdentityRepository oauthIdentityRepository;
+
     @InjectMocks
     private UserService userService;
 
@@ -77,6 +80,38 @@ class UserServiceTest {
         assertThat(response.profile().notificationPrefs().taskAssigned()).isTrue();
         assertThat(response.profile().notificationPrefs().statusChanges()).isFalse();
         assertThat(response.providers()).isEmpty();
+        assertThat(response.passwordLoginEnabled()).isTrue();
+    }
+
+    @Test
+    @DisplayName("getProfile: returns linked OAuth providers and passwordLoginEnabled=false for OAuth account")
+    void getProfile_withOAuthProviders() {
+        sampleUser.setPasswordLoginEnabled(false);
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(sampleUser));
+        when(userProfileRepository.findById(userId)).thenReturn(Optional.empty());
+
+        com.taskoura.entity.OAuthIdentity id1 = com.taskoura.entity.OAuthIdentity.builder()
+                .provider("google")
+                .emailAtLink("test@gmail.com")
+                .createdAt(LocalDateTime.now().minusHours(2))
+                .build();
+        com.taskoura.entity.OAuthIdentity id2 = com.taskoura.entity.OAuthIdentity.builder()
+                .provider("github")
+                .emailAtLink("test@github.com")
+                .createdAt(LocalDateTime.now().minusHours(1))
+                .build();
+
+        when(oauthIdentityRepository.findByUserIdOrderByCreatedAtAsc(userId)).thenReturn(List.of(id1, id2));
+
+        UserProfileResponse response = userService.getProfile("test@example.com");
+
+        assertThat(response.passwordLoginEnabled()).isFalse();
+        assertThat(response.providers()).hasSize(2);
+        assertThat(response.providers().get(0).provider()).isEqualTo("google");
+        assertThat(response.providers().get(0).email()).isEqualTo("test@gmail.com");
+        assertThat(response.providers().get(0).linkedAt()).isNotNull();
+        assertThat(response.providers().get(1).provider()).isEqualTo("github");
+        assertThat(response.providers().get(1).email()).isEqualTo("test@github.com");
     }
 
     @Test
@@ -294,5 +329,54 @@ class UserServiceTest {
         verify(attachmentStorageService).deleteFile("https://res.cloudinary.com/test/image/upload/v1/avatar.png");
         verify(userProfileRepository).save(existing);
         assertThat(existing.getAvatarUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("disconnectProvider: succeeds when user has password login enabled")
+    void disconnectProvider_withPasswordLogin_succeeds() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(sampleUser));
+        sampleUser.setPasswordLoginEnabled(true);
+        com.taskoura.entity.OAuthIdentity identity = com.taskoura.entity.OAuthIdentity.builder()
+                .id(UUID.randomUUID())
+                .userId(sampleUser.getId())
+                .provider("google")
+                .providerUserId("g-123")
+                .emailAtLink("test@example.com")
+                .build();
+        when(oauthIdentityRepository.findByUserIdAndProvider(sampleUser.getId(), "google"))
+                .thenReturn(Optional.of(identity));
+        when(oauthIdentityRepository.findByUserId(sampleUser.getId()))
+                .thenReturn(List.of(identity));
+
+        userService.disconnectProvider("test@example.com", "google");
+
+        verify(oauthIdentityRepository).delete(identity);
+    }
+
+    @Test
+    @DisplayName("disconnectProvider: throws 409 LAST_LOGIN_METHOD when disconnecting only login method without password")
+    void disconnectProvider_lastLoginMethod_throwsConflict() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(sampleUser));
+        sampleUser.setPasswordLoginEnabled(false);
+        com.taskoura.entity.OAuthIdentity identity = com.taskoura.entity.OAuthIdentity.builder()
+                .id(UUID.randomUUID())
+                .userId(sampleUser.getId())
+                .provider("google")
+                .providerUserId("g-123")
+                .emailAtLink("test@example.com")
+                .build();
+        when(oauthIdentityRepository.findByUserIdAndProvider(sampleUser.getId(), "google"))
+                .thenReturn(Optional.of(identity));
+        when(oauthIdentityRepository.findByUserId(sampleUser.getId()))
+                .thenReturn(List.of(identity));
+
+        assertThatThrownBy(() -> userService.disconnectProvider("test@example.com", "google"))
+                .isInstanceOf(com.taskoura.exception.ConflictException.class)
+                .satisfies(e -> {
+                    com.taskoura.exception.ConflictException ce = (com.taskoura.exception.ConflictException) e;
+                    assertThat(ce.getCode()).isEqualTo("LAST_LOGIN_METHOD");
+                });
+
+        verify(oauthIdentityRepository, never()).delete(any());
     }
 }
