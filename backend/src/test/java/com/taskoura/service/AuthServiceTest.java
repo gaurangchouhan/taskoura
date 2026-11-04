@@ -21,6 +21,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -49,6 +52,18 @@ class AuthServiceTest {
     @Mock
     private SessionService sessionService;
 
+<<<<<<< Updated upstream
+=======
+    @Mock
+    private OAuthCodeService oAuthCodeService;
+
+    @Mock
+    private org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
+
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+>>>>>>> Stashed changes
     @InjectMocks
     private AuthService authService;
 
@@ -162,8 +177,9 @@ class AuthServiceTest {
     void login_success() {
         LoginRequest request = new LoginRequest("alex@example.com", "Password123!");
         sampleUser.setVerified(true);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(new UsernamePasswordAuthenticationToken("alex@example.com", "Password123!"));
         when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
-        when(passwordEncoder.matches("Password123!", "encoded_hash")).thenReturn(true);
 
         com.taskoura.entity.UserSession mockSession = com.taskoura.entity.UserSession.builder()
                 .id(UUID.randomUUID())
@@ -192,7 +208,8 @@ class AuthServiceTest {
     @DisplayName("login: unknown email throws UnauthorizedException")
     void login_userNotFound_throwsUnauthorized() {
         LoginRequest request = new LoginRequest("unknown@example.com", "Password123!");
-        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(UnauthorizedException.class)
@@ -203,8 +220,8 @@ class AuthServiceTest {
     @DisplayName("login: incorrect password throws UnauthorizedException")
     void login_wrongPassword_throwsUnauthorized() {
         LoginRequest request = new LoginRequest("alex@example.com", "WrongPassword");
-        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
-        when(passwordEncoder.matches("WrongPassword", "encoded_hash")).thenReturn(false);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(UnauthorizedException.class)
@@ -216,8 +233,9 @@ class AuthServiceTest {
     void login_unverified_throwsForbidden() {
         LoginRequest request = new LoginRequest("alex@example.com", "Password123!");
         sampleUser.setVerified(false);
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(new UsernamePasswordAuthenticationToken("alex@example.com", "Password123!"));
         when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
-        when(passwordEncoder.matches("Password123!", "encoded_hash")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(ForbiddenException.class)
@@ -303,4 +321,45 @@ class AuthServiceTest {
         verify(userRepository).save(sampleUser);
         verify(sessionService).revokeAllUserSessions(sampleUser.getId());
     }
+<<<<<<< Updated upstream
+=======
+
+    @Test
+    @DisplayName("login: user with passwordLoginEnabled=false throws UnauthorizedException('Invalid credentials')")
+    void login_oauthOnlyUser_throwsUnauthorized() {
+        LoginRequest request = new LoginRequest("alex@example.com", "anyPassword");
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Password login disabled for this account"));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Invalid credentials");
+    }
+
+    @Test
+    @DisplayName("exchangeOAuthCode: successfully issues token, user, and session")
+    void exchangeOAuthCode_success() {
+        UUID userId = sampleUser.getId();
+        when(oAuthCodeService.consumeCode("raw-code-123")).thenReturn(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(sampleUser));
+
+        com.taskoura.entity.UserSession mockSession = com.taskoura.entity.UserSession.builder()
+                .id(UUID.randomUUID())
+                .user(sampleUser)
+                .absoluteExpiresAt(java.time.Instant.now().plusSeconds(3600))
+                .build();
+
+        when(sessionService.createSession(sampleUser, "Chrome")).thenReturn(mockSession);
+        when(jwtUtil.generateToken(sampleUser.getEmail(), mockSession.getId(), mockSession.getAbsoluteExpiresAt()))
+                .thenReturn("mocked.jwt.token");
+        when(sessionService.buildSessionInfo(mockSession))
+                .thenReturn(new com.taskoura.dto.SessionInfoResponse(3600, 300, null, null, null));
+
+        AuthResponse response = authService.exchangeOAuthCode("raw-code-123", "Chrome");
+
+        assertThat(response.token()).isEqualTo("mocked.jwt.token");
+        assertThat(response.user().email()).isEqualTo("alex@example.com");
+        assertThat(response.session()).isNotNull();
+    }
+>>>>>>> Stashed changes
 }

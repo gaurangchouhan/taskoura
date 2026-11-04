@@ -12,6 +12,10 @@ import java.util.Optional;
 import com.taskoura.repository.UserRepository;
 import com.taskoura.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,16 +28,33 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final SessionService sessionService;
     private final EmailService emailService;
+<<<<<<< Updated upstream
+=======
+    private final OAuthCodeService oAuthCodeService;
+    private final com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService;
+    private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
+    private final AuthenticationManager authenticationManager;
+>>>>>>> Stashed changes
 
+    @Autowired
     public AuthService(UserRepository userRepository, OtpService otpService,
                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
                        SessionService sessionService,
+<<<<<<< Updated upstream
                        @Autowired(required = false) EmailService emailService) {
+=======
+                       AuthenticationManager authenticationManager,
+                       @Autowired(required = false) EmailService emailService,
+                       @Autowired(required = false) OAuthCodeService oAuthCodeService,
+                       @Autowired(required = false) com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService,
+                       @Autowired(required = false) org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) {
+>>>>>>> Stashed changes
         this.userRepository = userRepository;
         this.otpService = otpService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.sessionService = sessionService;
+        this.authenticationManager = java.util.Objects.requireNonNull(authenticationManager, "AuthenticationManager must not be null");
         this.emailService = emailService;
     }
 
@@ -82,12 +103,23 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request, String userAgent) {
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
+            );
+        } catch (BadCredentialsException | UsernameNotFoundException e) {
+            throw new UnauthorizedException("Invalid credentials");
+        }
+
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
+<<<<<<< Updated upstream
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new UnauthorizedException("Invalid credentials");
         }
+=======
+>>>>>>> Stashed changes
         if (!user.isVerified()) {
             throw new ForbiddenException("Please verify your email before logging in");
         }
