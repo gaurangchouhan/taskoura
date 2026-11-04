@@ -1,14 +1,8 @@
 package com.taskoura.security.oauth;
 
-<<<<<<< HEAD
-=======
-import com.taskoura.entity.OAuthIdentity;
-import com.taskoura.entity.User;
-import com.taskoura.entity.UserProfile;
 import com.taskoura.repository.OAuthIdentityRepository;
 import com.taskoura.repository.UserProfileRepository;
 import com.taskoura.repository.UserRepository;
->>>>>>> origin/main
 import com.taskoura.service.OAuthCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,12 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
-<<<<<<< HEAD
-import com.taskoura.repository.OAuthIdentityRepository;
-import com.taskoura.repository.UserProfileRepository;
-import com.taskoura.repository.UserRepository;
-=======
->>>>>>> origin/main
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -31,34 +19,19 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
-<<<<<<< HEAD
-=======
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
->>>>>>> origin/main
 
 @Component
 public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
     private static final Logger log = LoggerFactory.getLogger(OAuth2AuthenticationSuccessHandler.class);
 
-<<<<<<< HEAD
     private final OAuthUserService oAuthUserService;
     private final OAuthCodeService oAuthCodeService;
-=======
-    private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
-    private final OAuthIdentityRepository oauthIdentityRepository;
-    private final OAuthCodeService oAuthCodeService;
-    private final PasswordEncoder passwordEncoder;
->>>>>>> origin/main
     private final OAuthLinkTokenService oAuthLinkTokenService;
     private final String frontendUrl;
 
     @Autowired
     public OAuth2AuthenticationSuccessHandler(
-<<<<<<< HEAD
             OAuthUserService oAuthUserService,
             OAuthCodeService oAuthCodeService,
             @Autowired(required = false) OAuthLinkTokenService oAuthLinkTokenService,
@@ -71,14 +44,11 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     }
 
     public OAuth2AuthenticationSuccessHandler(
-=======
->>>>>>> origin/main
             UserRepository userRepository,
             UserProfileRepository userProfileRepository,
             OAuthIdentityRepository oauthIdentityRepository,
             OAuthCodeService oAuthCodeService,
             PasswordEncoder passwordEncoder,
-<<<<<<< HEAD
             OAuthLinkTokenService oAuthLinkTokenService,
             String frontendUrl
     ) {
@@ -88,18 +58,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                 oAuthLinkTokenService,
                 frontendUrl
         );
-=======
-            @Autowired(required = false) OAuthLinkTokenService oAuthLinkTokenService,
-            @Value("${FRONTEND_URL:${app.frontend-url:http://localhost:5173}}") String frontendUrl
-    ) {
-        this.userRepository = userRepository;
-        this.userProfileRepository = userProfileRepository;
-        this.oauthIdentityRepository = oauthIdentityRepository;
-        this.oAuthCodeService = oAuthCodeService;
-        this.passwordEncoder = passwordEncoder;
-        this.oAuthLinkTokenService = oAuthLinkTokenService;
-        this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "http://localhost:5173";
->>>>>>> origin/main
     }
 
     public OAuth2AuthenticationSuccessHandler(
@@ -119,12 +77,8 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                                         Authentication authentication) throws IOException {
         try {
             if (!(authentication instanceof OAuth2AuthenticationToken authToken)) {
-<<<<<<< HEAD
                 log.warn("Authentication is not an OAuth2AuthenticationToken: {}",
                         authentication != null ? authentication.getClass().getName() : "null");
-=======
-                log.warn("Authentication is not an OAuth2AuthenticationToken: {}", authentication.getClass().getName());
->>>>>>> origin/main
                 response.sendRedirect(frontendUrl + "/auth/callback?error=PROVIDER_ERROR");
                 return;
             }
@@ -135,11 +89,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             // Check if this is an account linking flow
             String linkToken = CookieUtils.getCookie(request, "oauth2_link_token")
                     .map(jakarta.servlet.http.Cookie::getValue)
-<<<<<<< HEAD
                     .orElse(request != null ? request.getParameter("link_token") : null);
-=======
-                    .orElse(request.getParameter("link_token"));
->>>>>>> origin/main
 
             if (linkToken != null && !linkToken.isBlank()) {
                 CookieUtils.deleteCookie(request, response, "oauth2_link_token");
@@ -172,7 +122,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                 return;
             }
 
-<<<<<<< HEAD
             OAuthUserService.LoginResult result = oAuthUserService.processOAuthLogin(
                     provider,
                     providerUserId,
@@ -183,70 +132,12 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             );
 
             if (result.status() == OAuthUserService.LoginStatus.ACCOUNT_EXISTS_USE_PASSWORD) {
-=======
-            // Case (a): Identity exists
-            Optional<OAuthIdentity> existingIdentity =
-                    oauthIdentityRepository.findByProviderAndProviderUserId(provider, providerUserId);
-
-            if (existingIdentity.isPresent()) {
-                UUID userId = existingIdentity.get().getUserId();
-                Optional<User> userOpt = userRepository.findById(userId);
-                if (userOpt.isPresent()) {
-                    String code = oAuthCodeService.generateAndSaveCode(userId);
-                    response.sendRedirect(frontendUrl + "/auth/callback?code=" + code);
-                    return;
-                }
-            }
-
-            // Case (c): No identity, but a Taskoura account with the same email exists
-            Optional<User> existingUser = userRepository.findByEmail(email);
-            if (existingUser.isPresent()) {
->>>>>>> origin/main
                 log.info("OAuth login rejected for provider {}: account exists with same email, password required", provider);
                 response.sendRedirect(frontendUrl + "/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD");
                 return;
             }
 
-<<<<<<< HEAD
             String code = oAuthCodeService.generateAndSaveCode(result.user().getId());
-=======
-            // Case (b): No identity and no user with that email -> create user, identity, and profile
-            String safeName = (name != null && !name.isBlank()) ? name.trim() : email.substring(0, email.indexOf('@'));
-
-            String randomUnusableHash = passwordEncoder != null
-                    ? passwordEncoder.encode(UUID.randomUUID().toString())
-                    : "{bcrypt}" + UUID.randomUUID().toString();
-
-            User newUser = User.builder()
-                    .name(safeName)
-                    .email(email.toLowerCase().trim())
-                    .passwordHash(randomUnusableHash)
-                    .verified(true)
-                    .passwordLoginEnabled(false)
-                    .build();
-
-            User savedUser = userRepository.save(newUser);
-
-            OAuthIdentity identity = OAuthIdentity.builder()
-                    .userId(savedUser.getId())
-                    .provider(provider)
-                    .providerUserId(providerUserId)
-                    .emailAtLink(email.toLowerCase().trim())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            oauthIdentityRepository.save(identity);
-
-            // Prefill profile
-            UserProfile profile = UserProfile.builder()
-                    .user(savedUser)
-                    .userId(savedUser.getId())
-                    .avatarUrl(avatarUrl)
-                    .githubUrl(isValidGithubUrl(githubUrl) ? githubUrl : null)
-                    .build();
-            userProfileRepository.save(profile);
-
-            String code = oAuthCodeService.generateAndSaveCode(savedUser.getId());
->>>>>>> origin/main
             response.sendRedirect(frontendUrl + "/auth/callback?code=" + code);
 
         } catch (Exception e) {
@@ -285,7 +176,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
 
-<<<<<<< HEAD
         OAuthUserService.LinkStatus linkStatus = oAuthUserService.linkAccount(
                 linkData.userId(), provider, providerUserId, email
         );
@@ -298,36 +188,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
 
-=======
-        Optional<OAuthIdentity> existingIdentity =
-                oauthIdentityRepository.findByProviderAndProviderUserId(provider, providerUserId);
-
-        if (existingIdentity.isPresent()) {
-            if (existingIdentity.get().getUserId().equals(linkData.userId())) {
-                response.sendRedirect(frontendUrl + "/app/profile?link_error=ALREADY_LINKED");
-            } else {
-                response.sendRedirect(frontendUrl + "/app/profile?link_error=IDENTITY_LINKED_TO_OTHER_ACCOUNT");
-            }
-            return;
-        }
-
-        Optional<OAuthIdentity> userProviderIdentity =
-                oauthIdentityRepository.findByUserIdAndProvider(linkData.userId(), provider);
-        if (userProviderIdentity.isPresent()) {
-            response.sendRedirect(frontendUrl + "/app/profile?link_error=ALREADY_LINKED");
-            return;
-        }
-
-        OAuthIdentity newIdentity = OAuthIdentity.builder()
-                .userId(linkData.userId())
-                .provider(provider)
-                .providerUserId(providerUserId)
-                .emailAtLink(email.toLowerCase().trim())
-                .createdAt(LocalDateTime.now())
-                .build();
-        oauthIdentityRepository.save(newIdentity);
-
->>>>>>> origin/main
         response.sendRedirect(frontendUrl + "/app/profile?linked=" + provider);
     }
 
@@ -358,11 +218,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         if (verified instanceof String s) {
             return "true".equalsIgnoreCase(s);
         }
-<<<<<<< HEAD
-=======
-        // In case of Google, standard OIDC field is email_verified
-        // In case of GitHub, CustomOAuth2UserService sets email_verified attribute
->>>>>>> origin/main
         return false;
     }
 
@@ -409,7 +264,3 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         }
     }
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main

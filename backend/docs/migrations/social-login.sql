@@ -1,11 +1,10 @@
 -- ==============================================================================
--- Taskoura Schema Migration: Social Login (password_login_enabled)
+-- Taskoura Schema Migration: Social Login (password_login_enabled & OAuth tables)
 -- Target Database: PostgreSQL (Neon / Render / Local)
 -- Safety: Non-destructive, idempotent, preserves all existing users and credentials.
 -- ==============================================================================
 
 -- Apply Migration:
-<<<<<<< HEAD
 -- 1. Adds the password_login_enabled column with a NOT NULL constraint and DEFAULT true.
 -- Existing rows automatically evaluate to true, preserving existing password login.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_login_enabled boolean NOT NULL DEFAULT true;
@@ -33,18 +32,13 @@ CREATE TABLE IF NOT EXISTS oauth_login_codes (
 
 CREATE INDEX IF NOT EXISTS idx_oauth_login_codes_hashed ON oauth_login_codes (hashed_code);
 
-=======
--- Adds the password_login_enabled column with a NOT NULL constraint and DEFAULT true.
--- Existing rows automatically evaluate to true, preserving existing password login.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_login_enabled boolean NOT NULL DEFAULT true;
-
->>>>>>> origin/main
 -- Verification Query (Expected: all rows should have password_login_enabled = true):
 SELECT id, email, password_login_enabled FROM users;
 
 -- ==============================================================================
 -- Rollback Note:
--- To revert this column addition (caution: will remove tracking of OAuth-only accounts):
+-- To revert this migration:
+-- DROP TABLE IF EXISTS oauth_login_codes;
+-- DROP TABLE IF EXISTS oauth_identities;
 -- ALTER TABLE users DROP COLUMN IF EXISTS password_login_enabled;
 -- ==============================================================================
-

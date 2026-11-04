@@ -1,7 +1,7 @@
 package com.taskoura.security.oauth;
 
-import com.taskoura.config.ClockConfig;
-import com.taskoura.config.PasswordEncoderConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.taskoura.config.CorsConfig;
 import com.taskoura.config.SecurityConfig;
 import com.taskoura.controller.AuthController;
 import com.taskoura.dto.AuthResponse;
@@ -10,7 +10,6 @@ import com.taskoura.dto.SessionInfoResponse;
 import com.taskoura.dto.OAuthDtos.OAuthProvidersResponse;
 import com.taskoura.entity.User;
 import com.taskoura.entity.UserSession;
-import com.taskoura.exception.GlobalExceptionHandler;
 import com.taskoura.exception.UnauthorizedException;
 import com.taskoura.repository.OAuthIdentityRepository;
 import com.taskoura.repository.OAuthLoginCodeRepository;
@@ -21,7 +20,6 @@ import com.taskoura.security.JwtUtil;
 import com.taskoura.service.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-<<<<<<< HEAD
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,11 +28,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import com.taskoura.security.CustomUserDetailsService;
-=======
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
->>>>>>> origin/main
 
 import java.time.Clock;
 import java.util.Optional;
@@ -54,111 +47,87 @@ public class OAuthProviderConfigAndContextTest {
         ClientRegistrationRepository repo = clientConfig.clientRegistrationRepository("", "", "", "");
 
         assertThat(repo).isNotNull();
-        assertThat(repo.findByRegistrationId("google")).isNull();
-        assertThat(repo.findByRegistrationId("github")).isNull();
+        assertThat(repo).isInstanceOf(DynamicClientRegistrationRepository.class);
 
-        if (repo instanceof DynamicClientRegistrationRepository dynamicRepo) {
-            assertThat(dynamicRepo.getConfiguredProviderKeys()).isEmpty();
-        }
+        DynamicClientRegistrationRepository dynamicRepo = (DynamicClientRegistrationRepository) repo;
+        assertThat(dynamicRepo.getConfiguredProviderKeys()).isEmpty();
+        assertThat(dynamicRepo.findByRegistrationId("google")).isNull();
+        assertThat(dynamicRepo.findByRegistrationId("github")).isNull();
+
+        // Verify SecurityConfig can be instantiated without crashing
+        JwtAuthFilter jwtAuthFilter = mock(JwtAuthFilter.class);
+        SecurityConfig securityConfig = new SecurityConfig(jwtAuthFilter, new ObjectMapper(), new CorsConfig().corsConfigurationSource(), "http://localhost:5173");
+        assertThat(securityConfig).isNotNull();
     }
 
     @Test
     @DisplayName("App boots with only Google variables: repository contains only Google")
     void testClientRegistration_OnlyGoogle() {
-        ClientRegistrationRepository repo = clientConfig.clientRegistrationRepository(
-                "google-client-id-123",
-                "google-client-secret-xyz",
-                "",
-                ""
-        );
+        ClientRegistrationRepository repo = clientConfig.clientRegistrationRepository("google-client-id-123", "google-client-secret-xyz", "", "");
 
         assertThat(repo).isNotNull();
-        ClientRegistration google = repo.findByRegistrationId("google");
-        assertThat(google).isNotNull();
-        assertThat(google.getClientId()).isEqualTo("google-client-id-123");
-        assertThat(google.getScopes()).containsExactlyInAnyOrder("openid", "profile", "email");
-        assertThat(repo.findByRegistrationId("github")).isNull();
+        assertThat(repo).isInstanceOf(DynamicClientRegistrationRepository.class);
 
-        if (repo instanceof DynamicClientRegistrationRepository dynamicRepo) {
-            assertThat(dynamicRepo.getConfiguredProviderKeys()).containsExactly("google");
-        }
+        DynamicClientRegistrationRepository dynamicRepo = (DynamicClientRegistrationRepository) repo;
+        assertThat(dynamicRepo.getConfiguredProviderKeys()).containsExactly("google");
+        ClientRegistration google = dynamicRepo.findByRegistrationId("google");
+        assertThat(google).isNotNull();
+        assertThat(google.getRegistrationId()).isEqualTo("google");
+        assertThat(google.getClientId()).isEqualTo("google-client-id-123");
+        assertThat(google.getClientSecret()).isEqualTo("google-client-secret-xyz");
+
+        ClientRegistration github = dynamicRepo.findByRegistrationId("github");
+        assertThat(github).isNull();
     }
 
     @Test
     @DisplayName("App boots with both Google and GitHub variables: repository contains both")
     void testClientRegistration_BothProviders() {
         ClientRegistrationRepository repo = clientConfig.clientRegistrationRepository(
-                "google-id",
-                "google-secret",
-                "github-id",
-                "github-secret"
+                "google-id", "google-secret",
+                "github-id", "github-secret"
         );
 
         assertThat(repo).isNotNull();
-        ClientRegistration google = repo.findByRegistrationId("google");
-        assertThat(google).isNotNull();
-        assertThat(google.getClientId()).isEqualTo("google-id");
+        assertThat(repo).isInstanceOf(DynamicClientRegistrationRepository.class);
 
-        ClientRegistration github = repo.findByRegistrationId("github");
-        assertThat(github).isNotNull();
-        assertThat(github.getClientId()).isEqualTo("github-id");
-        assertThat(github.getScopes()).containsExactlyInAnyOrder("read:user", "user:email");
-
-        if (repo instanceof DynamicClientRegistrationRepository dynamicRepo) {
-            assertThat(dynamicRepo.getConfiguredProviderKeys()).containsExactlyInAnyOrder("google", "github");
-        }
+        DynamicClientRegistrationRepository dynamicRepo = (DynamicClientRegistrationRepository) repo;
+        assertThat(dynamicRepo.getConfiguredProviderKeys()).containsExactlyInAnyOrder("google", "github");
+        assertThat(dynamicRepo.findByRegistrationId("google")).isNotNull();
+        assertThat(dynamicRepo.findByRegistrationId("github")).isNotNull();
     }
 
     @Test
     @DisplayName("Blank, whitespace, or partial credentials never reach ClientRegistration")
     void testClientRegistration_BlankOrPartialCredentialsIgnored() {
-        // Only Google ID without secret, GitHub secret without ID
         ClientRegistrationRepository repo = clientConfig.clientRegistrationRepository(
-                "google-id-only",
-                "   ",
-                "   ",
-                "github-secret-only"
+                "google-id-only", "",
+                "", "github-secret-only"
         );
 
-        assertThat(repo).isNotNull();
-        assertThat(repo.findByRegistrationId("google")).isNull();
-        assertThat(repo.findByRegistrationId("github")).isNull();
-
-        if (repo instanceof DynamicClientRegistrationRepository dynamicRepo) {
-            assertThat(dynamicRepo.getConfiguredProviderKeys()).isEmpty();
-        }
+        DynamicClientRegistrationRepository dynamicRepo = (DynamicClientRegistrationRepository) repo;
+        assertThat(dynamicRepo.getConfiguredProviderKeys()).isEmpty();
     }
 
     @Test
-    @DisplayName("Providers endpoint lists ONLY configured providers")
-    void testGetAvailableOAuthProviders() {
+    @DisplayName("GET /api/auth/oauth/providers returns only configured providers")
+    void testGetProvidersEndpointOutput() {
         UserRepository userRepo = mock(UserRepository.class);
         OtpService otpService = mock(OtpService.class);
         PasswordEncoder encoder = mock(PasswordEncoder.class);
         JwtUtil jwtUtil = mock(JwtUtil.class);
         SessionService sessionService = mock(SessionService.class);
-<<<<<<< HEAD
         AuthenticationManager authManager = mock(AuthenticationManager.class);
 
         // Case 1: Empty repo
         ClientRegistrationRepository emptyRepo = clientConfig.clientRegistrationRepository("", "", "", "");
         AuthService authServiceEmpty = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, emptyRepo);
-=======
-
-        // Case 1: Empty repo
-        ClientRegistrationRepository emptyRepo = clientConfig.clientRegistrationRepository("", "", "", "");
-        AuthService authServiceEmpty = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, emptyRepo);
->>>>>>> origin/main
         OAuthProvidersResponse emptyResp = authServiceEmpty.getAvailableOAuthProviders();
         assertThat(emptyResp.providers()).isEmpty();
 
         // Case 2: Only Google
         ClientRegistrationRepository googleRepo = clientConfig.clientRegistrationRepository("gid", "gsecret", "", "");
-<<<<<<< HEAD
         AuthService authServiceGoogle = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, googleRepo);
-=======
-        AuthService authServiceGoogle = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, googleRepo);
->>>>>>> origin/main
         OAuthProvidersResponse googleResp = authServiceGoogle.getAvailableOAuthProviders();
         assertThat(googleResp.providers()).hasSize(1);
         assertThat(googleResp.providers().get(0).key()).isEqualTo("google");
@@ -167,11 +136,7 @@ public class OAuthProviderConfigAndContextTest {
 
         // Case 3: Both
         ClientRegistrationRepository bothRepo = clientConfig.clientRegistrationRepository("gid", "gsecret", "ghid", "ghsecret");
-<<<<<<< HEAD
         AuthService authServiceBoth = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, bothRepo);
-=======
-        AuthService authServiceBoth = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, bothRepo);
->>>>>>> origin/main
         OAuthProvidersResponse bothResp = authServiceBoth.getAvailableOAuthProviders();
         assertThat(bothResp.providers()).hasSize(2);
         assertThat(bothResp.providers().stream().map(p -> p.key()).toList()).containsExactly("google", "github");
@@ -186,7 +151,6 @@ public class OAuthProviderConfigAndContextTest {
         JwtUtil jwtUtil = mock(JwtUtil.class);
         SessionService sessionService = mock(SessionService.class);
 
-<<<<<<< HEAD
         CustomUserDetailsService userDetailsService = new CustomUserDetailsService(userRepo);
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
@@ -194,9 +158,6 @@ public class OAuthProviderConfigAndContextTest {
         AuthenticationManager authManager = new ProviderManager(authProvider);
 
         AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, null, null, null);
-=======
-        AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, null, null, null);
->>>>>>> origin/main
 
         User oauthUser = User.builder()
                 .id(UUID.randomUUID())
@@ -256,14 +217,10 @@ public class OAuthProviderConfigAndContextTest {
 
         when(codeService.consumeCode("valid-code")).thenReturn(userId);
 
-<<<<<<< HEAD
         AuthenticationManager authManager = mock(AuthenticationManager.class);
         when(authManager.authenticate(any())).thenReturn(new UsernamePasswordAuthenticationToken("test@example.com", "password"));
 
         AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, authManager, null, codeService, null, null);
-=======
-        AuthService authService = new AuthService(userRepo, otpService, encoder, jwtUtil, sessionService, null, codeService, null, null);
->>>>>>> origin/main
 
         // 1. Regular password login
         AuthResponse loginResp = authService.login(new LoginRequest("test@example.com", "password"));

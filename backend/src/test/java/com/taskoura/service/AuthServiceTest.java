@@ -52,24 +52,15 @@ class AuthServiceTest {
     @Mock
     private SessionService sessionService;
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> origin/main
     @Mock
     private OAuthCodeService oAuthCodeService;
 
     @Mock
     private org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
 
-<<<<<<< HEAD
     @Mock
     private AuthenticationManager authenticationManager;
 
->>>>>>> Stashed changes
-=======
->>>>>>> origin/main
     @InjectMocks
     private AuthService authService;
 
@@ -328,34 +319,17 @@ class AuthServiceTest {
         verify(userRepository).save(sampleUser);
         verify(sessionService).revokeAllUserSessions(sampleUser.getId());
     }
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> origin/main
 
     @Test
     @DisplayName("login: user with passwordLoginEnabled=false throws UnauthorizedException('Invalid credentials')")
     void login_oauthOnlyUser_throwsUnauthorized() {
-<<<<<<< HEAD
         LoginRequest request = new LoginRequest("alex@example.com", "anyPassword");
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Password login disabled for this account"));
-=======
-        sampleUser.setPasswordLoginEnabled(false);
-        when(userRepository.findByEmail("alex@example.com")).thenReturn(Optional.of(sampleUser));
-
-        LoginRequest request = new LoginRequest("alex@example.com", "anyPassword");
->>>>>>> origin/main
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Invalid credentials");
-<<<<<<< HEAD
-=======
-
-        verify(passwordEncoder, never()).matches(anyString(), anyString());
->>>>>>> origin/main
     }
 
     @Test
@@ -383,8 +357,4 @@ class AuthServiceTest {
         assertThat(response.user().email()).isEqualTo("alex@example.com");
         assertThat(response.session()).isNotNull();
     }
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> origin/main
 }

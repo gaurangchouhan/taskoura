@@ -10,17 +10,10 @@ import com.taskoura.security.oauth.OAuth2AuthenticationFailureHandler;
 import com.taskoura.security.oauth.OAuth2AuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
->>>>>>> Stashed changes
-=======
-import org.springframework.core.annotation.Order;
->>>>>>> origin/main
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -102,12 +95,6 @@ public class SecurityConfig {
     }
 
     @Bean
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-=======
-=======
->>>>>>> origin/main
     @Order(1)
     public SecurityFilterChain oauthSecurityFilterChain(
             HttpSecurity http,
@@ -124,7 +111,6 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
                 .anyRequest().permitAll()
-<<<<<<< HEAD
             )
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
@@ -133,8 +119,6 @@ public class SecurityConfig {
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     response.sendRedirect(frontendUrl + "/auth/callback?error=ACCESS_DENIED");
                 })
-=======
->>>>>>> origin/main
             );
 
         boolean hasProviders = false;
@@ -180,10 +164,6 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> origin/main
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
@@ -220,11 +200,10 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(
             @Autowired(required = false) CustomUserDetailsService customUserDetailsService,
             @Autowired(required = false) PasswordEncoder passwordEncoder) {
-        if (customUserDetailsService == null) {
-            return authentication -> authentication;
-        }
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(customUserDetailsService);
+        if (customUserDetailsService != null) {
+            authProvider.setUserDetailsService(customUserDetailsService);
+        }
         if (passwordEncoder != null) {
             authProvider.setPasswordEncoder(passwordEncoder);
         }

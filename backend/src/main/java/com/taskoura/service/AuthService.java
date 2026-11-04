@@ -29,40 +29,21 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final SessionService sessionService;
-    private final EmailService emailService;
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-    private final OAuthCodeService oAuthCodeService;
-    private final com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService;
-    private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
     private final AuthenticationManager authenticationManager;
->>>>>>> Stashed changes
-=======
+    private final EmailService emailService;
     private final OAuthCodeService oAuthCodeService;
     private final com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService;
     private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
->>>>>>> origin/main
 
     @Autowired
     public AuthService(UserRepository userRepository, OtpService otpService,
                        PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
                        SessionService sessionService,
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-                       @Autowired(required = false) EmailService emailService) {
-=======
                        AuthenticationManager authenticationManager,
-=======
->>>>>>> origin/main
                        @Autowired(required = false) EmailService emailService,
                        @Autowired(required = false) OAuthCodeService oAuthCodeService,
                        @Autowired(required = false) com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService,
                        @Autowired(required = false) org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) {
-<<<<<<< HEAD
->>>>>>> Stashed changes
-=======
->>>>>>> origin/main
         this.userRepository = userRepository;
         this.otpService = otpService;
         this.passwordEncoder = passwordEncoder;
@@ -132,19 +113,10 @@ public class AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
         if (!user.isPasswordLoginEnabled() || user.getPasswordHash() == null) {
             throw new UnauthorizedException("Invalid credentials");
         }
 
->>>>>>> origin/main
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Invalid credentials");
-        }
-=======
->>>>>>> Stashed changes
         if (!user.isVerified()) {
             throw new ForbiddenException("Please verify your email before logging in");
         }

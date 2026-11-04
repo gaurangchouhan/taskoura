@@ -8,10 +8,7 @@ import com.taskoura.entity.User;
 import com.taskoura.exception.UnauthorizedException;
 import com.taskoura.repository.UserRepository;
 import com.taskoura.security.JwtUtil;
-<<<<<<< HEAD
 import com.taskoura.security.CustomUserDetailsService;
-=======
->>>>>>> origin/main
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,12 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-<<<<<<< HEAD
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-=======
->>>>>>> origin/main
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
@@ -61,25 +55,19 @@ class UserPasswordLoginEnabledTest {
 
     @BeforeEach
     void setUp() {
-<<<<<<< HEAD
         CustomUserDetailsService userDetailsService = new CustomUserDetailsService(userRepository);
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder);
         AuthenticationManager authenticationManager = new ProviderManager(authProvider);
 
-=======
->>>>>>> origin/main
         authService = new AuthService(
                 userRepository,
                 otpService,
                 passwordEncoder,
                 jwtUtil,
                 sessionService,
-<<<<<<< HEAD
                 authenticationManager,
-=======
->>>>>>> origin/main
                 emailService,
                 null,
                 null,
@@ -190,4 +178,3 @@ class UserPasswordLoginEnabledTest {
         verify(sessionService).revokeAllUserSessions(oAuthUser.getId());
     }
 }
-
