@@ -4,6 +4,8 @@ import { FolderGit2, Loader2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { exchangeOAuthCode } from '../services/oauthService';
+import { LOGIN, REGISTER } from '../routes/paths';
+import { getPostLoginPath } from '../lib/authRedirect';
 
 export const OAUTH_ERROR_MAP: Record<string, string> = {
   ACCESS_DENIED: 'You cancelled the sign-in',
@@ -21,10 +23,11 @@ export const OAUTH_ERROR_MESSAGES = OAUTH_ERROR_MAP;
 export const OAuthCallbackPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSlowWakeup, setIsSlowWakeup] = useState(false);
+  const [exchangeCompleted, setExchangeCompleted] = useState(false);
   const exchangedRef = useRef(false);
 
   // Capture params once and immediately strip from URL to prevent exposure in history / referrers
@@ -55,7 +58,7 @@ export const OAuthCallbackPage: React.FC = () => {
 
     // 1. If neither code nor error is present: redirect to /login immediately
     if (!code && !error) {
-      navigate('/login', { replace: true });
+      navigate(LOGIN, { replace: true });
       return;
     }
 
@@ -77,14 +80,7 @@ export const OAuthCallbackPage: React.FC = () => {
           const provider = (data.user as any)?.oauthProvider || (data.user as any)?.provider;
           const label = provider === 'github' ? 'GitHub' : provider === 'google' ? 'Google' : 'Google/GitHub';
           toast.success(`Signed in with ${label}`);
-
-          const savedFrom =
-            typeof window !== 'undefined' ? sessionStorage.getItem('taskoura_auth_from') : null;
-          if (savedFrom && typeof window !== 'undefined') {
-            sessionStorage.removeItem('taskoura_auth_from');
-          }
-          const target = savedFrom || '/app';
-          navigate(target, { replace: true });
+          setExchangeCompleted(true);
         })
         .catch((err: any) => {
           const status = err?.response?.status;
@@ -100,6 +96,19 @@ export const OAuthCallbackPage: React.FC = () => {
         });
     }
   }, [login, navigate]);
+
+  // Navigate only after authenticated state is committed in AuthContext
+  useEffect(() => {
+    if (exchangeCompleted && isAuthenticated) {
+      const savedFrom =
+        typeof window !== 'undefined' ? sessionStorage.getItem('taskoura_auth_from') : null;
+      if (savedFrom && typeof window !== 'undefined') {
+        sessionStorage.removeItem('taskoura_auth_from');
+      }
+      const target = getPostLoginPath(savedFrom);
+      navigate(target, { replace: true });
+    }
+  }, [exchangeCompleted, isAuthenticated, navigate]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -118,14 +127,14 @@ export const OAuthCallbackPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(LOGIN)}
                 className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 transition-all cursor-pointer"
               >
                 Try Again
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/register')}
+                onClick={() => navigate(REGISTER)}
                 className="flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all cursor-pointer"
               >
                 Create Account with Email

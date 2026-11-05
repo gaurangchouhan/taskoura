@@ -251,8 +251,8 @@ describe('F-SOCIAL: SocialAuthButtons & OAuthCallbackPage', () => {
     expect(mockAssign).not.toHaveBeenCalled();
   });
 
-  // Test 7: Successful exchange logs user in (AuthContext.login called) and navigates to /app
-  it('7. Successful exchange logs the user in and navigates to /app', async () => {
+  // Test 7: Successful exchange logs user in (AuthContext.login called) and navigates to WORKSPACE (/app/projects)
+  it('7. Successful exchange logs the user in and navigates to WORKSPACE (/app/projects)', async () => {
     const queryClient = createTestQueryClient();
     render(
       <QueryClientProvider client={queryClient}>
@@ -261,7 +261,7 @@ describe('F-SOCIAL: SocialAuthButtons & OAuthCallbackPage', () => {
             <LocationWitness />
             <Routes>
               <Route path="/auth/callback" element={<OAuthCallbackPage />} />
-              <Route path="/app" element={<div data-testid="app-screen">App Screen</div>} />
+              <Route path="/app/projects" element={<div data-testid="app-screen">Workspace Projects Screen</div>} />
             </Routes>
           </MemoryRouter>
         </AuthProvider>
@@ -269,7 +269,7 @@ describe('F-SOCIAL: SocialAuthButtons & OAuthCallbackPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('current-path')).toHaveTextContent('/app');
+      expect(screen.getByTestId('current-path')).toHaveTextContent('/app/projects');
     });
 
     expect(lastExchangeCode).toBe('valid-exchange-code');
@@ -289,7 +289,7 @@ describe('F-SOCIAL: SocialAuthButtons & OAuthCallbackPage', () => {
           <MemoryRouter initialEntries={['/auth/callback?code=secret-token-code']}>
             <Routes>
               <Route path="/auth/callback" element={<OAuthCallbackPage />} />
-              <Route path="/app" element={<div>App</div>} />
+              <Route path="/app/projects" element={<div>Workspace Projects</div>} />
             </Routes>
           </MemoryRouter>
         </AuthProvider>
@@ -309,7 +309,7 @@ describe('F-SOCIAL: SocialAuthButtons & OAuthCallbackPage', () => {
             <MemoryRouter initialEntries={['/auth/callback?code=strict-mode-code']}>
               <Routes>
                 <Route path="/auth/callback" element={<OAuthCallbackPage />} />
-                <Route path="/app" element={<div>App</div>} />
+                <Route path="/app/projects" element={<div>Workspace Projects</div>} />
               </Routes>
             </MemoryRouter>
           </AuthProvider>

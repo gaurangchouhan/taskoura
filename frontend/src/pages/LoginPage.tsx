@@ -8,6 +8,7 @@ import { getErrorMessage } from '../lib/errors';
 import { apiClient } from '../services/api';
 import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
 import { OAUTH_ERROR_MESSAGES } from './OAuthCallbackPage';
+import { getPostLoginPath } from '../lib/authRedirect';
 
 export const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -72,7 +73,7 @@ export const LoginPage: React.FC = () => {
           if (savedFrom && typeof window !== 'undefined') {
             sessionStorage.removeItem('taskoura_auth_from');
           }
-          const from = stateFrom || savedFrom || '/app/projects';
+          const from = getPostLoginPath(stateFrom || savedFrom);
           navigate(from, { replace: true });
         },
         onError: (err: unknown) => {

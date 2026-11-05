@@ -17,6 +17,17 @@ import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
 import { ProfilePage } from './features/profile/pages/ProfilePage';
 import { OAuthCallbackPage } from './pages/OAuthCallbackPage';
+import {
+  HOME,
+  LOGIN,
+  REGISTER,
+  OAUTH_CALLBACK,
+  WORKSPACE,
+  FORGOT_PASSWORD,
+  RESET_PASSWORD,
+  VERIFY_EMAIL,
+  VERIFY_OTP,
+} from './routes/paths';
 
 export const App: React.FC = () => {
   return (
@@ -24,12 +35,12 @@ export const App: React.FC = () => {
       <ScrollToTop />
       <Routes>
         {/* Public Landing Page */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path={HOME} element={<LandingPage />} />
 
         {/* Authentication & Verification Routes (Public Only) */}
-        <Route path="/auth/callback" element={<OAuthCallbackPage />} />
+        <Route path={OAUTH_CALLBACK} element={<OAuthCallbackPage />} />
         <Route
-          path="/login"
+          path={LOGIN}
           element={
             <PublicOnlyRoute>
               <LoginPage />
@@ -37,7 +48,7 @@ export const App: React.FC = () => {
           }
         />
         <Route
-          path="/register"
+          path={REGISTER}
           element={
             <PublicOnlyRoute>
               <RegisterPage />
@@ -45,7 +56,7 @@ export const App: React.FC = () => {
           }
         />
         <Route
-          path="/forgot-password"
+          path={FORGOT_PASSWORD}
           element={
             <PublicOnlyRoute>
               <ForgotPasswordPage />
@@ -53,16 +64,16 @@ export const App: React.FC = () => {
           }
         />
         <Route
-          path="/reset-password"
+          path={RESET_PASSWORD}
           element={
             <PublicOnlyRoute>
               <ResetPasswordPage />
             </PublicOnlyRoute>
           }
         />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path={VERIFY_EMAIL} element={<VerifyEmailPage />} />
         {/* Route alias for backward compatibility */}
-        <Route path="/verify-otp" element={<VerifyEmailPage />} />
+        <Route path={VERIFY_OTP} element={<VerifyEmailPage />} />
 
         {/* Profile Routes (Protected) */}
         <Route
@@ -84,7 +95,7 @@ export const App: React.FC = () => {
 
         {/* Project Management Dashboard & Board (Protected Routes) */}
         <Route
-          path="/app/projects"
+          path={WORKSPACE}
           element={
             <ProtectedRoute>
               <DashboardPage />
