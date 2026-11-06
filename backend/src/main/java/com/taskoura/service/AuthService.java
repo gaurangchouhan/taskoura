@@ -32,6 +32,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final OAuthCodeService oAuthCodeService;
+    private final com.taskoura.repository.OAuthIdentityRepository oauthIdentityRepository;
     private final com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService;
     private final org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository;
 
@@ -43,7 +44,8 @@ public class AuthService {
                        @Autowired(required = false) EmailService emailService,
                        @Autowired(required = false) OAuthCodeService oAuthCodeService,
                        @Autowired(required = false) com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService,
-                       @Autowired(required = false) org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) {
+                       @Autowired(required = false) org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository,
+                       @Autowired(required = false) com.taskoura.repository.OAuthIdentityRepository oauthIdentityRepository) {
         this.userRepository = userRepository;
         this.otpService = otpService;
         this.passwordEncoder = passwordEncoder;
@@ -54,6 +56,18 @@ public class AuthService {
         this.oAuthCodeService = oAuthCodeService;
         this.oAuthLinkTokenService = oAuthLinkTokenService;
         this.clientRegistrationRepository = clientRegistrationRepository;
+        this.oauthIdentityRepository = oauthIdentityRepository;
+    }
+
+    public AuthService(UserRepository userRepository, OtpService otpService,
+                       PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+                       SessionService sessionService,
+                       AuthenticationManager authenticationManager,
+                       EmailService emailService,
+                       OAuthCodeService oAuthCodeService,
+                       com.taskoura.security.oauth.OAuthLinkTokenService oAuthLinkTokenService,
+                       org.springframework.security.oauth2.client.registration.ClientRegistrationRepository clientRegistrationRepository) {
+        this(userRepository, otpService, passwordEncoder, jwtUtil, sessionService, authenticationManager, emailService, oAuthCodeService, oAuthLinkTokenService, clientRegistrationRepository, null);
     }
 
     public MessageResponse register(RegisterRequest request) {
@@ -177,11 +191,15 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        if (oauthIdentityRepository != null && oauthIdentityRepository.findByUserIdAndProvider(user.getId(), p).isPresent()) {
+            throw new ConflictException("ALREADY_LINKED", "Provider is already linked to this account");
+        }
+
         if (oAuthLinkTokenService == null) {
             throw new BadRequestException("OAuth linking service is not available");
         }
         String token = oAuthLinkTokenService.createLinkToken(user.getId(), p);
-        String url = "/oauth2/authorization/" + p + "?link_token=" + token;
+        String url = "/oauth2/authorization/" + p + "?link=" + token;
         return new com.taskoura.dto.OAuthDtos.OAuthLinkStartResponse(url);
     }
 

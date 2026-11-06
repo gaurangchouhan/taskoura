@@ -7,7 +7,7 @@ import { useLogin, useResendOtp } from '../hooks/useAuthApi';
 import { getErrorMessage } from '../lib/errors';
 import { apiClient } from '../services/api';
 import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
-import { OAUTH_ERROR_MESSAGES } from './OAuthCallbackPage';
+import { OAUTH_ERROR_MESSAGES, resolveOAuthErrorMessage } from './OAuthCallbackPage';
 import { getPostLoginPath } from '../lib/authRedirect';
 
 export const LoginPage: React.FC = () => {
@@ -19,13 +19,14 @@ export const LoginPage: React.FC = () => {
   const reasonParam = searchParams.get('reason');
   const sessionReasonParam = searchParams.get('sessionReason');
   const errorParam = searchParams.get('error');
+  const methodsParam = searchParams.get('methods');
   const emailParam = searchParams.get('email') || (location.state as { email?: string } | null)?.email || '';
 
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(() => {
     if (errorParam) {
-      return OAUTH_ERROR_MESSAGES[errorParam] || `Authentication failed: ${errorParam}`;
+      return resolveOAuthErrorMessage(errorParam, methodsParam);
     }
     return null;
   });

@@ -347,6 +347,64 @@ describe('F-SOCIAL: SocialAuthButtons & OAuthCallbackPage', () => {
     expect(screen.getByRole('button', { name: /Create Account with Email/i })).toBeInTheDocument();
   });
 
+  it('displays correct messages for ACCOUNT_EXISTS_UNVERIFIED and for each methods value', async () => {
+    const testCases = [
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_UNVERIFIED'],
+        expected: 'An account with this email exists but was never verified. Verify it with the code we emailed you (use Resend code), then try again',
+      },
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD&methods=password'],
+        expected: 'An account with this email already exists. Log in with your password, then connect Google or GitHub from your profile',
+      },
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD&methods=google,password'],
+        expected: 'An account with this email already exists. Log in with your password, then connect Google or GitHub from your profile',
+      },
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD&methods=google'],
+        expected: 'This email is already registered with Google. Sign in with that provider, then connect the other one from your profile',
+      },
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD&methods=github'],
+        expected: 'This email is already registered with GitHub. Sign in with that provider, then connect the other one from your profile',
+      },
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD&methods=google,github'],
+        expected: 'This email is already registered with Google and GitHub. Sign in with that provider, then connect the other one from your profile',
+      },
+      {
+        entries: ['/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD&methods=unknown_method'],
+        expected: 'An account with this email already exists. Log in with your password, then connect Google or GitHub from your profile',
+      },
+      {
+        entries: ['/auth/callback?error=SOME_UNKNOWN_CODE_999'],
+        expected: 'Sign-in failed. Please try again.',
+      },
+    ];
+
+    for (const tc of testCases) {
+      const queryClient = createTestQueryClient();
+      const { unmount } = render(
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <MemoryRouter initialEntries={tc.entries}>
+              <Routes>
+                <Route path="/auth/callback" element={<OAuthCallbackPage />} />
+              </Routes>
+            </MemoryRouter>
+          </AuthProvider>
+        </QueryClientProvider>
+      );
+
+      const msg = await screen.findByText(tc.expected);
+      expect(msg).toBeInTheDocument();
+      // Verify raw code is never shown
+      expect(screen.queryByText(/SOME_UNKNOWN_CODE_999/)).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   // Test 11: Displays the expired message when exchange returns 400 VALIDATION_FAILED
   it('11. Displays the expired message when exchange returns 400 VALIDATION_FAILED', async () => {
     returnExchange400 = true;

@@ -6,6 +6,7 @@ import com.taskoura.dto.OAuthDtos.OAuthProvidersResponse;
 import com.taskoura.entity.UserSession;
 import com.taskoura.exception.UnauthorizedException;
 import com.taskoura.security.oauth.OAuthExchangeRateLimiter;
+import com.taskoura.security.oauth.OAuthLinkRateLimiter;
 import com.taskoura.service.AuthService;
 import com.taskoura.service.SessionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,13 +24,23 @@ public class AuthController {
     private final AuthService authService;
     private final SessionService sessionService;
     private final OAuthExchangeRateLimiter oAuthExchangeRateLimiter;
+    private final OAuthLinkRateLimiter oAuthLinkRateLimiter;
 
+    @Autowired
     public AuthController(AuthService authService,
                           SessionService sessionService,
-                          @Autowired(required = false) OAuthExchangeRateLimiter oAuthExchangeRateLimiter) {
+                          @Autowired(required = false) OAuthExchangeRateLimiter oAuthExchangeRateLimiter,
+                          @Autowired(required = false) OAuthLinkRateLimiter oAuthLinkRateLimiter) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.oAuthExchangeRateLimiter = oAuthExchangeRateLimiter;
+        this.oAuthLinkRateLimiter = oAuthLinkRateLimiter;
+    }
+
+    public AuthController(AuthService authService,
+                          SessionService sessionService,
+                          OAuthExchangeRateLimiter oAuthExchangeRateLimiter) {
+        this(authService, sessionService, oAuthExchangeRateLimiter, null);
     }
 
     @GetMapping("/oauth/providers")
@@ -40,10 +51,15 @@ public class AuthController {
     @PostMapping("/oauth/link/start")
     public ResponseEntity<com.taskoura.dto.OAuthDtos.OAuthLinkStartResponse> startOAuthLink(
             @RequestBody com.taskoura.dto.OAuthDtos.OAuthLinkStartRequest request,
-            org.springframework.security.core.Authentication authentication
+            org.springframework.security.core.Authentication authentication,
+            HttpServletRequest httpRequest
     ) {
         if (authentication == null || authentication.getName() == null) {
             throw new UnauthorizedException("Authentication required");
+        }
+        if (oAuthLinkRateLimiter != null) {
+            String clientIp = resolveClientIp(httpRequest);
+            oAuthLinkRateLimiter.checkRateLimit(clientIp + ":" + authentication.getName());
         }
         return ResponseEntity.ok(authService.startOAuthLink(authentication.getName(), request.provider()));
     }

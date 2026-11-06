@@ -196,7 +196,7 @@ class OAuth2FlowTest {
     void testSuccessHandler_CaseC_AccountExistsWithPassword() throws IOException {
         when(oauthIdentityRepository.findByProviderAndProviderUserId("google", "sub-999"))
                 .thenReturn(Optional.empty());
-        User existingUser = User.builder().id(UUID.randomUUID()).email("existing@taskoura.dev").name("Existing").build();
+        User existingUser = User.builder().id(UUID.randomUUID()).email("existing@taskoura.dev").name("Existing").verified(true).build();
         when(userRepository.findByEmail("existing@taskoura.dev")).thenReturn(Optional.of(existingUser));
 
         Map<String, Object> attrs = Map.of(

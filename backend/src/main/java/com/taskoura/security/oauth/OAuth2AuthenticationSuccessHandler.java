@@ -3,6 +3,7 @@ package com.taskoura.security.oauth;
 import com.taskoura.repository.OAuthIdentityRepository;
 import com.taskoura.repository.UserProfileRepository;
 import com.taskoura.repository.UserRepository;
+import com.taskoura.service.EmailService;
 import com.taskoura.service.OAuthCodeService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,6 +29,8 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private final OAuthUserService oAuthUserService;
     private final OAuthCodeService oAuthCodeService;
     private final OAuthLinkTokenService oAuthLinkTokenService;
+    private final EmailService emailService;
+    private final boolean autoLinkVerifiedEmail;
     private final String frontendUrl;
 
     @Autowired
@@ -35,12 +38,25 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             OAuthUserService oAuthUserService,
             OAuthCodeService oAuthCodeService,
             @Autowired(required = false) OAuthLinkTokenService oAuthLinkTokenService,
+            @Autowired(required = false) EmailService emailService,
+            @Value("${oauth.auto-link-verified-email:${OAUTH_AUTO_LINK_VERIFIED_EMAIL:true}}") boolean autoLinkVerifiedEmail,
             @Value("${FRONTEND_URL:${app.frontend-url:https://taskoura.vercel.app}}") String frontendUrl
     ) {
         this.oAuthUserService = oAuthUserService;
         this.oAuthCodeService = oAuthCodeService;
         this.oAuthLinkTokenService = oAuthLinkTokenService;
+        this.emailService = emailService;
+        this.autoLinkVerifiedEmail = autoLinkVerifiedEmail;
         this.frontendUrl = frontendUrl != null ? frontendUrl.replaceAll("/+$", "") : "https://taskoura.vercel.app";
+    }
+
+    public OAuth2AuthenticationSuccessHandler(
+            OAuthUserService oAuthUserService,
+            OAuthCodeService oAuthCodeService,
+            OAuthLinkTokenService oAuthLinkTokenService,
+            String frontendUrl
+    ) {
+        this(oAuthUserService, oAuthCodeService, oAuthLinkTokenService, null, false, frontendUrl);
     }
 
     public OAuth2AuthenticationSuccessHandler(
@@ -90,7 +106,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             // Check if this is an account linking flow
             String linkToken = CookieUtils.getCookie(request, "oauth2_link_token")
                     .map(jakarta.servlet.http.Cookie::getValue)
-                    .orElse(request != null ? request.getParameter("link_token") : null);
+                    .orElse(request != null ? (request.getParameter("link") != null ? request.getParameter("link") : request.getParameter("link_token")) : null);
 
             if (linkToken != null && !linkToken.isBlank()) {
                 CookieUtils.deleteCookie(request, response, "oauth2_link_token");
@@ -129,13 +145,32 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                     email,
                     name,
                     avatarUrl,
-                    isValidGithubUrl(githubUrl) ? githubUrl : null
+                    isValidGithubUrl(githubUrl) ? githubUrl : null,
+                    emailVerified,
+                    autoLinkVerifiedEmail
             );
+
+            if (result.status() == OAuthUserService.LoginStatus.ACCOUNT_EXISTS_UNVERIFIED) {
+                log.info("OAuth login rejected for provider {}: account exists with same email but is unverified", provider);
+                response.sendRedirect(targetFrontend + "/auth/callback?error=ACCOUNT_EXISTS_UNVERIFIED");
+                return;
+            }
 
             if (result.status() == OAuthUserService.LoginStatus.ACCOUNT_EXISTS_USE_PASSWORD) {
                 log.info("OAuth login rejected for provider {}: account exists with same email, password required", provider);
                 response.sendRedirect(targetFrontend + "/auth/callback?error=ACCOUNT_EXISTS_USE_PASSWORD");
                 return;
+            }
+
+            if (result.autoLinked()) {
+                log.info("OAuth automatic link successful for user {} with provider {}", result.user().getEmail(), provider);
+                try {
+                    if (emailService != null) {
+                        emailService.sendPasswordChangedEmail(result.user().getEmail(), result.user().getName());
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to send auto-link security email: {}", e.getMessage());
+                }
             }
 
             String code = oAuthCodeService.generateAndSaveCode(result.user().getId());
@@ -164,22 +199,28 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             return;
         }
 
+        if (linkData.provider() != null && !linkData.provider().equalsIgnoreCase(provider)) {
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=LINK_EXPIRED");
+            return;
+        }
+
         String providerUserId = extractProviderUserId(provider, oauth2User);
+        if (providerUserId == null || providerUserId.isBlank()) {
+            response.sendRedirect(targetFrontend + "/app/profile?link_error=PROVIDER_ERROR");
+            return;
+        }
+
         String email = extractEmail(oauth2User);
-        boolean emailVerified = extractEmailVerified(provider, oauth2User);
-
-        if (email == null || email.isBlank()) {
-            response.sendRedirect(targetFrontend + "/app/profile?link_error=EMAIL_MISSING");
-            return;
-        }
-
-        if (!emailVerified) {
-            response.sendRedirect(targetFrontend + "/app/profile?link_error=EMAIL_UNVERIFIED");
-            return;
-        }
+        String avatarUrl = extractAvatarUrl(provider, oauth2User);
+        String githubUrl = extractGithubUrl(provider, oauth2User);
 
         OAuthUserService.LinkStatus linkStatus = oAuthUserService.linkAccount(
-                linkData.userId(), provider, providerUserId, email
+                linkData.userId(),
+                provider,
+                providerUserId,
+                email,
+                avatarUrl,
+                isValidGithubUrl(githubUrl) ? githubUrl : null
         );
 
         if (linkStatus == OAuthUserService.LinkStatus.ALREADY_LINKED) {
@@ -188,6 +229,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         } else if (linkStatus == OAuthUserService.LinkStatus.IDENTITY_LINKED_TO_OTHER_ACCOUNT) {
             response.sendRedirect(targetFrontend + "/app/profile?link_error=IDENTITY_LINKED_TO_OTHER_ACCOUNT");
             return;
+        }
+
+        try {
+            if (emailService != null && email != null && !email.isBlank()) {
+                emailService.sendPasswordChangedEmail(email, "Taskoura User");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send account linking security email: {}", e.getMessage());
         }
 
         response.sendRedirect(targetFrontend + "/app/profile?linked=" + provider);
@@ -210,6 +259,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                     }
                 }
             }
+            String trustedOrigin = HttpCookieOAuth2AuthorizationRequestRepository.extractTrustedFrontendOrigin(request);
+            if (trustedOrigin != null && !trustedOrigin.isBlank()) {
+                return trustedOrigin;
+            }
         }
         return this.frontendUrl;
     }
@@ -217,20 +270,18 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private String extractProviderUserId(String provider, OAuth2User user) {
         if ("google".equalsIgnoreCase(provider)) {
             Object sub = user.getAttribute("sub");
-            return sub != null ? sub.toString() : null;
+            return sub != null ? String.valueOf(sub) : null;
         } else if ("github".equalsIgnoreCase(provider)) {
             Object id = user.getAttribute("id");
-            return id != null ? id.toString() : null;
+            return id != null ? String.valueOf(id) : null;
         }
-        Object sub = user.getAttribute("sub");
-        if (sub != null) return sub.toString();
-        Object id = user.getAttribute("id");
-        return id != null ? id.toString() : user.getName();
+        Object name = user.getName();
+        return name != null ? String.valueOf(name) : null;
     }
 
     private String extractEmail(OAuth2User user) {
         Object email = user.getAttribute("email");
-        return email != null ? email.toString().trim() : null;
+        return email != null ? String.valueOf(email).trim().toLowerCase() : null;
     }
 
     private boolean extractEmailVerified(String provider, OAuth2User user) {
@@ -246,12 +297,12 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
     private String extractName(OAuth2User user) {
         Object name = user.getAttribute("name");
-        if (name != null && !name.toString().isBlank()) {
-            return name.toString().trim();
+        if (name instanceof String s && !s.isBlank()) {
+            return s.trim();
         }
         Object login = user.getAttribute("login");
-        if (login != null && !login.toString().isBlank()) {
-            return login.toString().trim();
+        if (login instanceof String s && !s.isBlank()) {
+            return s.trim();
         }
         return null;
     }
@@ -259,29 +310,36 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private String extractAvatarUrl(String provider, OAuth2User user) {
         if ("google".equalsIgnoreCase(provider)) {
             Object picture = user.getAttribute("picture");
-            return picture != null ? picture.toString().trim() : null;
+            return picture instanceof String s ? s : null;
+        } else if ("github".equalsIgnoreCase(provider)) {
+            Object avatar = user.getAttribute("avatar_url");
+            return avatar instanceof String s ? s : null;
         }
-        Object avatar = user.getAttribute("avatar_url");
-        if (avatar != null) return avatar.toString().trim();
-        Object picture = user.getAttribute("picture");
-        return picture != null ? picture.toString().trim() : null;
+        return null;
     }
 
     private String extractGithubUrl(String provider, OAuth2User user) {
         if ("github".equalsIgnoreCase(provider)) {
             Object htmlUrl = user.getAttribute("html_url");
-            return htmlUrl != null ? htmlUrl.toString().trim() : null;
+            if (htmlUrl instanceof String s && !s.isBlank()) {
+                return s.trim();
+            }
+            Object login = user.getAttribute("login");
+            if (login instanceof String s && !s.isBlank()) {
+                return "https://github.com/" + s.trim();
+            }
         }
         return null;
     }
 
     private boolean isValidGithubUrl(String url) {
-        if (url == null || url.isBlank()) return false;
+        if (url == null || url.isBlank()) {
+            return false;
+        }
         try {
-            URI uri = new URI(url.trim());
-            if (!"https".equalsIgnoreCase(uri.getScheme())) return false;
+            URI uri = URI.create(url);
             String host = uri.getHost();
-            return host != null && (host.equalsIgnoreCase("github.com") || host.equalsIgnoreCase("www.github.com"));
+            return host != null && (host.equalsIgnoreCase("github.com") || host.endsWith(".github.com"));
         } catch (Exception e) {
             return false;
         }

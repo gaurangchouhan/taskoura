@@ -31,14 +31,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
-    private static final Set<String> PUBLIC_PATHS = Set.of(
+    public static final Set<String> PUBLIC_PATHS = Set.of(
+            "/error",
             "/api/health",
             "/api/auth/register",
             "/api/auth/verify-otp",
             "/api/auth/resend-otp",
             "/api/auth/login",
             "/api/auth/forgot-password",
-            "/api/auth/reset-password"
+            "/api/auth/reset-password",
+            "/api/auth/oauth/providers",
+            "/api/auth/oauth/exchange"
     );
 
     public JwtAuthFilter(JwtUtil jwtUtil,
@@ -58,8 +61,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // If it's a public unauthenticated path without auth or with auth (like logging in), skip session validation
+        // If it's a public unauthenticated path, public endpoints still work without a token.
+        // A stale, expired or invalid token sent to a public endpoint must not cause an error.
         if (isPublicPath(path)) {
+            try {
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7);
+                    if (jwtUtil.validateToken(token)) {
+                        String email = jwtUtil.extractEmail(token);
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }
+                }
+            } catch (Exception ignored) {
+                // Ignore stale or malformed tokens on public endpoints
+            }
             filterChain.doFilter(request, response);
             return;
         }
@@ -89,8 +107,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             claims = jwtUtil.parseClaimsAllowingExpired(token);
         } catch (Exception e) {
-            // Cryptographically invalid or malformed token
-            filterChain.doFilter(request, response);
+            // Cryptographically invalid or malformed token on a protected endpoint
+            sendUnauthenticated(response, request);
             return;
         }
 
@@ -183,6 +201,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
         // GET /api/auth/session is automatically treated as a background request
         return "GET".equalsIgnoreCase(request.getMethod()) && "/api/auth/session".equals(request.getRequestURI());
+    }
+
+    private void sendUnauthenticated(HttpServletResponse response, HttpServletRequest request) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        body.put("error", HttpStatus.UNAUTHORIZED.getReasonPhrase());
+        body.put("code", "UNAUTHENTICATED");
+        body.put("message", "Full authentication is required to access this resource");
+        body.put("timestamp", clock.instant().toString());
+        body.put("path", request.getRequestURI());
+
+        response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 
     private void sendSessionExpired(HttpServletResponse response, HttpServletRequest request, String reason) throws IOException {

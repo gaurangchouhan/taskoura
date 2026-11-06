@@ -106,8 +106,27 @@ apiClient.interceptors.request.use((config) => {
     ? new URL(rawUrl).pathname
     : rawUrl;
 
-  const isPublic = pathname.startsWith('/auth/') || pathname.startsWith('/health') ||
-                   pathname.startsWith('/api/auth/') || pathname.startsWith('/api/health');
+  const normalizedPath = pathname.startsWith('/api')
+    ? pathname
+    : `/api${pathname.startsWith('/') ? '' : '/'}${pathname}`;
+
+  const method = (config.method || 'get').toUpperCase();
+
+  const isPublic =
+    (method === 'POST' && (
+      normalizedPath === '/api/auth/register' ||
+      normalizedPath === '/api/auth/verify-otp' ||
+      normalizedPath === '/api/auth/resend-otp' ||
+      normalizedPath === '/api/auth/login' ||
+      normalizedPath === '/api/auth/forgot-password' ||
+      normalizedPath === '/api/auth/reset-password' ||
+      normalizedPath === '/api/auth/oauth/exchange'
+    )) ||
+    (method === 'GET' && (
+      normalizedPath === '/api/auth/oauth/providers' ||
+      normalizedPath === '/api/health' ||
+      (normalizedPath.startsWith('/api/attachments/') && normalizedPath.endsWith('/download'))
+    ));
 
   if (!isPublic) {
     const token = getToken();
@@ -148,11 +167,17 @@ apiClient.interceptors.response.use(
     const pathname = rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
       ? new URL(rawUrl).pathname
       : rawUrl;
-    const isAuthEndpoint = pathname.startsWith('/auth/') || pathname.startsWith('/api/auth/');
+    const normalizedPath = pathname.startsWith('/api')
+      ? pathname
+      : `/api${pathname.startsWith('/') ? '' : '/'}${pathname}`;
+
+    const isExcluded401 =
+      normalizedPath === '/api/auth/login' ||
+      normalizedPath === '/api/auth/oauth/link/start';
 
     // 401 is definitive: clear auth and redirect to /login
     // Keep ?reason=expired for UNAUTHENTICATED (or default), ?reason=timeout for SESSION_EXPIRED
-    if (status === 401 && !isAuthEndpoint) {
+    if (status === 401 && !isExcluded401) {
       clearToken();
       const code = getErrorCode(error);
       const data = error.response?.data as { code?: string; reason?: string } | undefined;
@@ -170,7 +195,7 @@ apiClient.interceptors.response.use(
     }
 
     // 403 compatibility fallback: only clear auth & redirect if token is missing or expired
-    if (status === 403 && !isAuthEndpoint) {
+    if (status === 403 && !isExcluded401) {
       const token = getToken();
       if (!token || isTokenExpired(token)) {
         clearToken();

@@ -36,16 +36,25 @@ public class OAuthUserService {
 
     public enum LoginStatus {
         SUCCESS,
-        ACCOUNT_EXISTS_USE_PASSWORD
+        ACCOUNT_EXISTS_USE_PASSWORD,
+        ACCOUNT_EXISTS_UNVERIFIED
     }
 
-    public record LoginResult(LoginStatus status, User user) {
+    public record LoginResult(LoginStatus status, User user, boolean autoLinked) {
         public static LoginResult success(User user) {
-            return new LoginResult(LoginStatus.SUCCESS, user);
+            return new LoginResult(LoginStatus.SUCCESS, user, false);
+        }
+
+        public static LoginResult success(User user, boolean autoLinked) {
+            return new LoginResult(LoginStatus.SUCCESS, user, autoLinked);
         }
 
         public static LoginResult accountExistsUsePassword() {
-            return new LoginResult(LoginStatus.ACCOUNT_EXISTS_USE_PASSWORD, null);
+            return new LoginResult(LoginStatus.ACCOUNT_EXISTS_USE_PASSWORD, null, false);
+        }
+
+        public static LoginResult accountExistsUnverified() {
+            return new LoginResult(LoginStatus.ACCOUNT_EXISTS_UNVERIFIED, null, false);
         }
     }
 
@@ -61,7 +70,9 @@ public class OAuthUserService {
                                          String email,
                                          String name,
                                          String avatarUrl,
-                                         String githubUrl) {
+                                         String githubUrl,
+                                         boolean emailVerified,
+                                         boolean autoLinkVerifiedEmail) {
         String normalizedEmail = email != null ? email.toLowerCase().trim() : null;
 
         // 1. Existing identity
@@ -72,14 +83,52 @@ public class OAuthUserService {
             UUID userId = existingIdentity.get().getUserId();
             Optional<User> userOpt = userRepository.findById(userId);
             if (userOpt.isPresent()) {
-                return LoginResult.success(userOpt.get());
+                return LoginResult.success(userOpt.get(), false);
             }
         }
 
-        // 2. Existing user with same email (password required, linking prevented)
+        // 2. Existing user with same email
         if (normalizedEmail != null) {
-            Optional<User> existingUser = userRepository.findByEmail(normalizedEmail);
-            if (existingUser.isPresent()) {
+            Optional<User> existingUserOpt = userRepository.findByEmail(normalizedEmail);
+            if (existingUserOpt.isPresent()) {
+                User existingUser = existingUserOpt.get();
+                if (!existingUser.isVerified()) {
+                    return LoginResult.accountExistsUnverified();
+                }
+
+                if (autoLinkVerifiedEmail && emailVerified) {
+                    // Automatic linking
+                    OAuthIdentity identity = OAuthIdentity.builder()
+                            .userId(existingUser.getId())
+                            .provider(provider)
+                            .providerUserId(providerUserId)
+                            .emailAtLink(normalizedEmail)
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                    oauthIdentityRepository.save(identity);
+
+                    // Prefill empty profile details
+                    userProfileRepository.findById(existingUser.getId()).ifPresent(profile -> {
+                        boolean changed = false;
+                        if ((profile.getAvatarUrl() == null || profile.getAvatarUrl().isBlank())
+                                && avatarUrl != null && !avatarUrl.isBlank()) {
+                            profile.setAvatarUrl(avatarUrl);
+                            changed = true;
+                        }
+                        if ("github".equalsIgnoreCase(provider)
+                                && (profile.getGithubUrl() == null || profile.getGithubUrl().isBlank())
+                                && githubUrl != null && !githubUrl.isBlank()) {
+                            profile.setGithubUrl(githubUrl);
+                            changed = true;
+                        }
+                        if (changed) {
+                            userProfileRepository.save(profile);
+                        }
+                    });
+
+                    return LoginResult.success(existingUser, true);
+                }
+
                 return LoginResult.accountExistsUsePassword();
             }
         }
@@ -110,7 +159,7 @@ public class OAuthUserService {
                 .userId(savedUser.getId())
                 .provider(provider)
                 .providerUserId(providerUserId)
-                .emailAtLink(normalizedEmail)
+                .emailAtLink(normalizedEmail != null ? normalizedEmail : "")
                 .createdAt(LocalDateTime.now())
                 .build();
         oauthIdentityRepository.save(identity);
@@ -123,11 +172,26 @@ public class OAuthUserService {
                 .build();
         userProfileRepository.save(profile);
 
-        return LoginResult.success(savedUser);
+        return LoginResult.success(savedUser, false);
     }
 
     @Transactional
-    public LinkStatus linkAccount(UUID userId, String provider, String providerUserId, String email) {
+    public LoginResult processOAuthLogin(String provider,
+                                         String providerUserId,
+                                         String email,
+                                         String name,
+                                         String avatarUrl,
+                                         String githubUrl) {
+        return processOAuthLogin(provider, providerUserId, email, name, avatarUrl, githubUrl, true, true);
+    }
+
+    @Transactional
+    public LinkStatus linkAccount(UUID userId,
+                                  String provider,
+                                  String providerUserId,
+                                  String email,
+                                  String avatarUrl,
+                                  String githubUrl) {
         Optional<OAuthIdentity> existingIdentity =
                 oauthIdentityRepository.findByProviderAndProviderUserId(provider, providerUserId);
 
@@ -154,7 +218,29 @@ public class OAuthUserService {
                 .build();
         oauthIdentityRepository.save(newIdentity);
 
+        userProfileRepository.findById(userId).ifPresent(profile -> {
+            boolean changed = false;
+            if ((profile.getAvatarUrl() == null || profile.getAvatarUrl().isBlank())
+                    && avatarUrl != null && !avatarUrl.isBlank()) {
+                profile.setAvatarUrl(avatarUrl);
+                changed = true;
+            }
+            if ("github".equalsIgnoreCase(provider)
+                    && (profile.getGithubUrl() == null || profile.getGithubUrl().isBlank())
+                    && githubUrl != null && !githubUrl.isBlank()) {
+                profile.setGithubUrl(githubUrl);
+                changed = true;
+            }
+            if (changed) {
+                userProfileRepository.save(profile);
+            }
+        });
+
         return LinkStatus.SUCCESS;
     }
-}
 
+    @Transactional
+    public LinkStatus linkAccount(UUID userId, String provider, String providerUserId, String email) {
+        return linkAccount(userId, provider, providerUserId, email, null, null);
+    }
+}

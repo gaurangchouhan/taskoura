@@ -1,18 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderGit2, ArrowRight, Lock, Mail, User, AlertCircle } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { useRegister } from '../hooks/useAuthApi';
 import { getErrorMessage, getErrorCode } from '../lib/errors';
 import { apiClient } from '../services/api';
 import { SocialAuthButtons } from '../components/auth/SocialAuthButtons';
+import { resolveOAuthErrorMessage } from './OAuthCallbackPage';
 
 export const RegisterPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const errorParam = searchParams.get('error');
+  const methodsParam = searchParams.get('methods');
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(() => {
+    if (errorParam) {
+      return resolveOAuthErrorMessage(errorParam, methodsParam);
+    }
+    return null;
+  });
   const [isDeliveryFailed, setIsDeliveryFailed] = useState(false);
 
   const navigate = useNavigate();

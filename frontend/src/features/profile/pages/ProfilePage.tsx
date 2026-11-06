@@ -138,11 +138,12 @@ const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
 };
 
 const LINK_ERROR_MESSAGES: Record<string, string> = {
-  ALREADY_LINKED: 'This provider account is already connected to your profile.',
-  IDENTITY_LINKED_TO_OTHER_ACCOUNT: 'This account is already linked to another Taskoura user.',
-  ACCESS_DENIED: 'Connection request was cancelled or access was denied.',
-  PROVIDER_ERROR: 'An error occurred with the authentication provider. Please try again.',
-  LINK_EXPIRED: 'The account linking session expired. Please try connecting again.',
+  ALREADY_LINKED: 'This account is already connected',
+  IDENTITY_LINKED_TO_OTHER_ACCOUNT: 'This GitHub account is already connected to a different Taskoura account',
+  ACCESS_DENIED: 'You cancelled the connection',
+  LINK_EXPIRED: 'The connection link expired, please try again',
+  STATE_INVALID: 'The connection session expired, please try again',
+  PROVIDER_ERROR: 'Something went wrong with the provider, please try again',
 };
 
 function GoogleIcon({ className = 'w-4 h-4' }: { className?: string }) {
@@ -189,31 +190,50 @@ export const ProfilePage: React.FC = () => {
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [lastLoginMethodError, setLastLoginMethodError] = useState<string | null>(null);
   const [linkErrorBanner, setLinkErrorBanner] = useState<string | null>(null);
+  const handledReturnRef = useRef(false);
+
+  // Restore buttons on pageshow event with persisted true
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setConnectingProvider(null);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   // Handle URL return parameters (?linked=<provider> or ?link_error=<CODE>)
   useEffect(() => {
+    if (handledReturnRef.current) return;
+
     const linked = searchParams.get('linked');
     const linkError = searchParams.get('link_error');
 
+    if (!linked && !linkError) return;
+
+    handledReturnRef.current = true;
+
     if (linked) {
-      const providerName = linked.charAt(0).toUpperCase() + linked.slice(1);
-      toast.success(`Successfully connected ${providerName}!`);
+      const pKey = linked.toLowerCase();
+      const providerName =
+        pKey === 'github' ? 'GitHub' : pKey === 'google' ? 'Google' : linked.charAt(0).toUpperCase() + linked.slice(1);
+      toast.success(`${providerName} connected`);
       queryClient.invalidateQueries({ queryKey: profileQueryKeys.me });
     } else if (linkError) {
-      const msg = LINK_ERROR_MESSAGES[linkError] || 'Failed to connect account. Please try again.';
+      const msg = LINK_ERROR_MESSAGES[linkError] || 'Something went wrong with the provider, please try again';
       toast.error(msg);
       setLinkErrorBanner(msg);
+      queryClient.invalidateQueries({ queryKey: profileQueryKeys.me });
     }
 
-    if (linked || linkError) {
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete('linked');
-      nextParams.delete('link_error');
-      setSearchParams(nextParams, { replace: true });
-      if (typeof window !== 'undefined' && window.history?.replaceState) {
-        const cleanUrl = window.location.pathname + (nextParams.toString() ? `?${nextParams.toString()}` : '');
-        window.history.replaceState({}, document.title, cleanUrl);
-      }
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('linked');
+    nextParams.delete('link_error');
+    setSearchParams(nextParams, { replace: true });
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      const cleanUrl = window.location.pathname + (nextParams.toString() ? `?${nextParams.toString()}` : '');
+      window.history.replaceState({}, document.title, cleanUrl);
     }
   }, [searchParams, setSearchParams, queryClient]);
 
@@ -702,6 +722,11 @@ export const ProfilePage: React.FC = () => {
   };
 
   const handleConnectProvider = async (providerKey: string) => {
+    const pKey = providerKey.toLowerCase();
+    const label =
+      configuredProviders.find((p) => p.key.toLowerCase() === pKey)?.label ||
+      (pKey === 'github' ? 'GitHub' : pKey === 'google' ? 'Google' : providerKey);
+
     try {
       setConnectingProvider(providerKey);
       const res = await startOAuthLinkMutation.mutateAsync(providerKey);
@@ -709,9 +734,17 @@ export const ProfilePage: React.FC = () => {
         window.location.assign(res.url);
       }
     } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || 'Failed to start connecting provider';
+      const status = err?.response?.status;
+      const errorCode = err?.response?.data?.code || err?.response?.data?.error;
+      let errorMsg = err?.response?.data?.message || 'Failed to start connecting provider';
+
+      if (status === 409 || errorCode === 'ALREADY_LINKED') {
+        errorMsg = `${label} is already connected`;
+      } else if (status === 400) {
+        errorMsg = 'This provider is not available';
+      }
+
       toast.error(errorMsg);
-    } finally {
       setConnectingProvider(null);
     }
   };
@@ -1771,14 +1804,19 @@ export const ProfilePage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleConnectProvider(provider.key)}
-                                disabled={connectingProvider === provider.key}
+                                disabled={connectingProvider !== null}
+                                aria-busy={connectingProvider === provider.key}
                                 data-testid={`connect-provider-${pKey}`}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl shadow-2xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {connectingProvider === provider.key && (
                                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 )}
-                                <span>Connect</span>
+                                <span>
+                                  {connectingProvider === provider.key
+                                    ? `Connecting to ${provider.label}...`
+                                    : 'Connect'}
+                                </span>
                               </button>
                             )}
                           </div>

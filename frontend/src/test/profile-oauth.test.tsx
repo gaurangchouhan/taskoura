@@ -62,6 +62,7 @@ let availableProviders = [
   { key: 'github', label: 'GitHub', startUrl: '/oauth2/authorization/github' },
 ];
 let lastLinkStartBody: any = null;
+let lastLinkStartAuthHeader: string | null = null;
 let lastDisconnectedProvider: string | null = null;
 let disconnectShouldReturn409 = false;
 
@@ -75,6 +76,7 @@ const server = setupServer(
   }),
 
   http.post('*/api/auth/oauth/link/start', async ({ request }) => {
+    lastLinkStartAuthHeader = request.headers.get('authorization');
     const body = (await request.json()) as any;
     lastLinkStartBody = body;
     return HttpResponse.json({ url: `/oauth2/authorization/${body.provider}` });
@@ -113,6 +115,7 @@ beforeEach(() => {
     { key: 'github', label: 'GitHub', startUrl: '/oauth2/authorization/github' },
   ];
   lastLinkStartBody = null;
+  lastLinkStartAuthHeader = null;
   lastDisconnectedProvider = null;
   disconnectShouldReturn409 = false;
 
@@ -191,7 +194,7 @@ describe('PHASE 7B: Connected accounts on Profile', () => {
     expect(screen.queryByTestId('provider-row-google')).not.toBeInTheDocument();
   });
 
-  it('connect calls /api/auth/oauth/link/start and navigates via window.location.assign', async () => {
+  it('connect calls /api/auth/oauth/link/start with Authorization header and navigates via window.location.assign', async () => {
     const user = userEvent.setup();
     const assignMock = vi.fn();
     Object.defineProperty(window, 'location', {
@@ -210,8 +213,134 @@ describe('PHASE 7B: Connected accounts on Profile', () => {
 
     await waitFor(() => {
       expect(lastLinkStartBody).toEqual({ provider: 'github' });
+      expect(lastLinkStartAuthHeader).toMatch(/^Bearer\s+/);
       expect(assignMock).toHaveBeenCalledWith('/oauth2/authorization/github');
     });
+  });
+
+  it('disables both connect buttons while running, shows Connecting to GitHub... with aria-busy, and restores on pageshow', async () => {
+    // Both google and github not connected
+    currentUser.providers = [];
+    const assignMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, assign: assignMock, pathname: '/app/profile' },
+    });
+
+    // Make link/start hang briefly to inspect loading state
+    let resolvePending: (val: any) => void = () => {};
+    server.use(
+      http.post('*/api/auth/oauth/link/start', () => {
+        return new Promise((res) => {
+          resolvePending = res;
+        });
+      })
+    );
+
+    const user = userEvent.setup();
+    renderProfilePage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider-github')).toBeInTheDocument();
+      expect(screen.getByTestId('connect-provider-google')).toBeInTheDocument();
+    });
+
+    const githubBtn = screen.getByTestId('connect-provider-github');
+    const googleBtn = screen.getByTestId('connect-provider-google');
+
+    await user.click(githubBtn);
+
+    // Both buttons should be disabled
+    await waitFor(() => {
+      expect(githubBtn).toBeDisabled();
+      expect(googleBtn).toBeDisabled();
+      expect(githubBtn).toHaveAttribute('aria-busy', 'true');
+      expect(githubBtn).toHaveTextContent('Connecting to GitHub...');
+    });
+
+    // Simulate pageshow event with persisted = true
+    window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+
+    await waitFor(() => {
+      expect(githubBtn).not.toBeDisabled();
+      expect(googleBtn).not.toBeDisabled();
+      expect(githubBtn).toHaveTextContent('Connect');
+    });
+
+    // Clean up pending promise
+    resolvePending(HttpResponse.json({ url: '/oauth2/authorization/github' }));
+  });
+
+  it('does not navigate on 409, 400 or 401 and displays proper error messages', async () => {
+    const user = userEvent.setup();
+    const assignMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...window.location, assign: assignMock, pathname: '/app/profile' },
+    });
+
+    // Test 409 ALREADY_LINKED
+    server.use(
+      http.post('*/api/auth/oauth/link/start', () => {
+        return HttpResponse.json({ code: 'ALREADY_LINKED', message: 'Already linked' }, { status: 409 });
+      })
+    );
+
+    const toastErrorSpy = vi.spyOn(toast, 'error');
+    const { unmount } = renderProfilePage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider-github')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('connect-provider-github'));
+
+    await waitFor(() => {
+      expect(toastErrorSpy).toHaveBeenCalledWith('GitHub is already connected');
+      expect(assignMock).not.toHaveBeenCalled();
+    });
+
+    unmount();
+
+    // Test 400 provider disabled/unavailable
+    server.use(
+      http.post('*/api/auth/oauth/link/start', () => {
+        return HttpResponse.json({ message: 'Bad request' }, { status: 400 });
+      })
+    );
+
+    const { unmount: unmount400 } = renderProfilePage();
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider-github')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('connect-provider-github'));
+
+    await waitFor(() => {
+      expect(toastErrorSpy).toHaveBeenCalledWith('This provider is not available');
+      expect(assignMock).not.toHaveBeenCalled();
+    });
+
+    unmount400();
+
+    // Test 401 unauthenticated
+    server.use(
+      http.post('*/api/auth/oauth/link/start', () => {
+        return HttpResponse.json({ message: 'Full authentication is required to access this resource' }, { status: 401 });
+      })
+    );
+
+    const { unmount: unmount401 } = renderProfilePage();
+    await waitFor(() => {
+      expect(screen.getByTestId('connect-provider-github')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('connect-provider-github'));
+
+    await waitFor(() => {
+      expect(toastErrorSpy).toHaveBeenCalledWith('Full authentication is required to access this resource');
+      expect(assignMock).not.toHaveBeenCalled();
+    });
+
+    unmount401();
   });
 
   it('disconnect opens ConfirmDialog, cancels without deleting', async () => {
@@ -294,17 +423,18 @@ describe('PHASE 7B: Connected accounts on Profile', () => {
     renderProfilePage(['/app/profile?linked=google']);
 
     await waitFor(() => {
-      expect(toastSpy).toHaveBeenCalledWith('Successfully connected Google!');
+      expect(toastSpy).toHaveBeenCalledWith('Google connected');
     });
   });
 
   it('maps return error codes (?link_error=<CODE>) to friendly messages and cleans query string', async () => {
     const errorCodes = [
-      { code: 'ACCESS_DENIED', expected: 'Connection request was cancelled or access was denied.' },
-      { code: 'ALREADY_LINKED', expected: 'This provider account is already connected to your profile.' },
-      { code: 'IDENTITY_LINKED_TO_OTHER_ACCOUNT', expected: 'This account is already linked to another Taskoura user.' },
-      { code: 'PROVIDER_ERROR', expected: 'An error occurred with the authentication provider. Please try again.' },
-      { code: 'LINK_EXPIRED', expected: 'The account linking session expired. Please try connecting again.' },
+      { code: 'ACCESS_DENIED', expected: 'You cancelled the connection' },
+      { code: 'ALREADY_LINKED', expected: 'This account is already connected' },
+      { code: 'IDENTITY_LINKED_TO_OTHER_ACCOUNT', expected: 'This GitHub account is already connected to a different Taskoura account' },
+      { code: 'PROVIDER_ERROR', expected: 'Something went wrong with the provider, please try again' },
+      { code: 'LINK_EXPIRED', expected: 'The connection link expired, please try again' },
+      { code: 'STATE_INVALID', expected: 'The connection session expired, please try again' },
     ];
 
     for (const { code, expected } of errorCodes) {

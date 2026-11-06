@@ -104,7 +104,8 @@ public class SecurityConfig {
             @Autowired(required = false) OAuth2AuthenticationSuccessHandler successHandler,
             @Autowired(required = false) OAuth2AuthenticationFailureHandler failureHandler,
             @Autowired(required = false) HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository,
-            @Autowired(required = false) CustomOAuth2UserService customOAuth2UserService
+            @Autowired(required = false) CustomOAuth2UserService customOAuth2UserService,
+            @Autowired(required = false) com.taskoura.security.oauth.OAuthLinkValidationFilter oauthLinkValidationFilter
     ) throws Exception {
         http
             .securityMatcher("/oauth2/**", "/login/oauth2/**")
@@ -158,6 +159,10 @@ public class SecurityConfig {
                     oauth2.failureHandler(failureHandler);
                 }
             });
+        }
+
+        if (oauthLinkValidationFilter != null) {
+            http.addFilterBefore(oauthLinkValidationFilter, org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.class);
         }
 
         return http.build();
