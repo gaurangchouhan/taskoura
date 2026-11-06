@@ -1839,9 +1839,13 @@ export const ProfilePage: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleGuardedNavigation('/forgot-password')}
+                  onClick={() =>
+                    handleGuardedNavigation(
+                      userEmail ? `/forgot-password?email=${encodeURIComponent(userEmail)}` : '/forgot-password'
+                    )
+                  }
                   data-testid="link-change-password"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 transition-colors p-2 hover:bg-sky-50 rounded-xl"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-600 hover:text-sky-700 transition-colors p-2 hover:bg-sky-50 rounded-xl cursor-pointer"
                 >
                   <span>Change password</span>
                   <ExternalLink className="w-3.5 h-3.5" />

@@ -370,6 +370,29 @@ describe('MODULE F16: Profile and Password Reset', () => {
 
       expect(screen.getByTestId('input-reset-email')).toHaveValue('completely-unknown-user@nowhere.com');
     });
+
+    it('pre-fills email from URL query parameter ?email=...', async () => {
+      renderWithApp(
+        <Routes>
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+        </Routes>,
+        { initialEntries: ['/forgot-password?email=ada%40taskoura.dev'] }
+      );
+
+      const emailInput = screen.getByTestId('input-forgot-email');
+      expect(emailInput).toHaveValue('ada@taskoura.dev');
+
+      const submitBtn = screen.getByTestId('btn-forgot-submit');
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(lastForgotEmail).toBe('ada@taskoura.dev');
+        expect(screen.getByTestId('reset-password-page')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('input-reset-email')).toHaveValue('ada@taskoura.dev');
+    });
   });
 
   describe('ResetPasswordPage: Validation, Error Handling, and Resend Cooldown', () => {

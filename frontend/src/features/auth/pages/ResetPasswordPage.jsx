@@ -3,10 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, CheckCircle2, AlertCircle, FolderGit2, RefreshCw } from 'lucide-react';
 import { OtpInput } from '../../../components/auth/OtpInput';
 import { useResetPassword, useForgotPassword } from '../hooks';
+import { useAuth } from '../../../context/AuthContext';
+import { clearToken } from '../../../lib/token';
 import { getErrorMessage, getErrorCode, getRetryAfterSeconds } from '../../../lib/errors';
 
 export const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
+  const { isAuthenticated } = useAuth();
   const initialEmail = searchParams.get('email') || '';
 
   const [email, setEmail] = useState(initialEmail);
@@ -111,12 +114,13 @@ export const ResetPasswordPage = () => {
         newPassword,
       });
 
+      clearToken();
       const msg = res?.message || 'Password reset successfully. You can now log in with your new password.';
       setSuccessMessage(msg);
 
       // Navigate to login after brief confirmation
       setTimeout(() => {
-        navigate('/login', { state: { resetSuccess: true } });
+        navigate('/login', { state: { resetSuccess: true, email: email.trim() } });
       }, 1000);
     } catch (err) {
       const code = getErrorCode(err);
@@ -314,11 +318,11 @@ export const ResetPasswordPage = () => {
 
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <Link
-              to="/login"
+              to={isAuthenticated ? '/app/profile' : '/login'}
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back to Sign In</span>
+              <span>{isAuthenticated ? 'Back to Profile' : 'Back to Sign In'}</span>
             </Link>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { FolderGit2, ArrowRight, Lock, Mail, AlertCircle, AlertTriangle } from 'lucide-react';
+import { FolderGit2, ArrowRight, Lock, Mail, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
 import { useLogin, useResendOtp } from '../hooks/useAuthApi';
@@ -134,6 +134,17 @@ export const LoginPage: React.FC = () => {
               Access your software development projects and task boards
             </p>
           </div>
+
+          {/* Password Reset Success Notice */}
+          {(location.state as { resetSuccess?: boolean } | null)?.resetSuccess && !error && (
+            <div
+              data-testid="reset-success-notice"
+              className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold flex items-center gap-2.5"
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>Password reset successfully. You can now log in with your new password.</span>
+            </div>
+          )}
 
           {/* Expired / Timeout Session Notice */}
           {sessionMessage && !error && (

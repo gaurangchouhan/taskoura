@@ -55,22 +55,8 @@ export const App: React.FC = () => {
             </PublicOnlyRoute>
           }
         />
-        <Route
-          path={FORGOT_PASSWORD}
-          element={
-            <PublicOnlyRoute>
-              <ForgotPasswordPage />
-            </PublicOnlyRoute>
-          }
-        />
-        <Route
-          path={RESET_PASSWORD}
-          element={
-            <PublicOnlyRoute>
-              <ResetPasswordPage />
-            </PublicOnlyRoute>
-          }
-        />
+        <Route path={FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+        <Route path={RESET_PASSWORD} element={<ResetPasswordPage />} />
         <Route path={VERIFY_EMAIL} element={<VerifyEmailPage />} />
         {/* Route alias for backward compatibility */}
         <Route path={VERIFY_OTP} element={<VerifyEmailPage />} />

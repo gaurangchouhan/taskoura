@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, ArrowRight, ArrowLeft, Loader2, CheckCircle2, AlertCircle, FolderGit2 } from 'lucide-react';
 import { useForgotPassword } from '../hooks';
+import { useAuth } from '../../../context/AuthContext';
 import { getErrorMessage, getErrorCode, getRetryAfterSeconds } from '../../../lib/errors';
 
 export const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const { isAuthenticated } = useAuth();
+  const initialEmail = searchParams.get('email') || '';
+
+  const [email, setEmail] = useState(initialEmail);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -15,6 +20,12 @@ export const ForgotPasswordPage = () => {
 
   const forgotPasswordMutation = useForgotPassword();
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (initialEmail && !email) {
+      setEmail(initialEmail);
+    }
+  }, [initialEmail]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -179,11 +190,11 @@ export const ForgotPasswordPage = () => {
 
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <Link
-              to="/login"
+              to={isAuthenticated ? '/app/profile' : '/login'}
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back to Sign In</span>
+              <span>{isAuthenticated ? 'Back to Profile' : 'Back to Sign In'}</span>
             </Link>
           </div>
         </div>
