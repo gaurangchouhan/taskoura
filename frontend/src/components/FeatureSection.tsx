@@ -111,14 +111,17 @@ export const FeatureSection: React.FC = () => {
       <div className="absolute top-1/3 -left-48 w-96 h-96 bg-sky-100/60 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative max-w-page mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
         {/* Section Header: How It Works */}
         <div id="how-it-works" className="text-center max-w-3xl mx-auto mb-20 scroll-mt-24">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-sky-700 text-xs font-semibold mb-3">
             <Workflow className="w-3.5 h-3.5" />
             <span>Structured Engineering Lifecycle</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h2
+            className="font-extrabold text-slate-900 tracking-tight"
+            style={{ fontSize: 'clamp(1.75rem, 3vw + 0.75rem, 2.25rem)' }}
+          >
             How Taskoura Powers Software Teams
           </h2>
           <p className="mt-4 text-base text-slate-600">
@@ -159,7 +162,10 @@ export const FeatureSection: React.FC = () => {
         {/* Interactive Feature Deep Dives: Tabs */}
         <div id="features" className="scroll-mt-24">
           <div className="text-center max-w-2xl mx-auto mb-10">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            <h2
+              className="font-extrabold text-slate-900 tracking-tight"
+              style={{ fontSize: 'clamp(1.5rem, 2.5vw + 0.75rem, 1.875rem)' }}
+            >
               Engineered for Modern Development
             </h2>
             <p className="mt-2 text-sm text-slate-600">

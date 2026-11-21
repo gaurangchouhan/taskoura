@@ -644,107 +644,112 @@ export const PlanPreview: React.FC<PlanPreviewProps> = ({
                             : 'bg-slate-50/50 opacity-60'
                         }`}
                       >
-                        {/* Row 1: Checkbox + Title + Category + Priority + Reset + Remove */}
-                        <div className="flex items-center gap-2.5">
-                          <input
-                            type="checkbox"
-                            checked={task.selected}
-                            aria-label={`Select task ${task.title}`}
-                            data-testid={`checkbox-task-${mIdx}-${tIdx}`}
-                            onChange={() => toggleTask(mIdx, tIdx)}
-                            className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0"
-                          />
-
-                          <div className="flex-1 min-w-0">
+                        {/* Task fields: stacked below md, inline on md and above */}
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-2.5">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
                             <input
-                              type="text"
-                              value={task.title}
-                              data-testid={`task-title-input-${mIdx}-${tIdx}`}
-                              aria-label="Task title"
-                              aria-errormessage={`task-title-error-${mIdx}-${tIdx}`}
-                              onChange={(e) =>
-                                updateTaskTitle(mIdx, tIdx, e.target.value)
-                              }
-                              placeholder="Task title"
-                              className={`w-full text-sm font-medium rounded-lg border px-2.5 py-1 transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                                taskErrors.title
-                                  ? 'border-rose-400 bg-rose-50/30 text-rose-900 focus:border-rose-500'
-                                  : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
-                              }`}
+                              type="checkbox"
+                              checked={task.selected}
+                              aria-label={`Select task ${task.title}`}
+                              data-testid={`checkbox-task-${mIdx}-${tIdx}`}
+                              onChange={() => toggleTask(mIdx, tIdx)}
+                              className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0"
                             />
+
+                            <div className="flex-1 min-w-0">
+                              <input
+                                type="text"
+                                value={task.title}
+                                data-testid={`task-title-input-${mIdx}-${tIdx}`}
+                                aria-label="Task title"
+                                aria-errormessage={`task-title-error-${mIdx}-${tIdx}`}
+                                onChange={(e) =>
+                                  updateTaskTitle(mIdx, tIdx, e.target.value)
+                                }
+                                placeholder="Task title"
+                                className={`w-full text-sm font-medium rounded-lg border px-2.5 py-1.5 md:py-1 transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                  taskErrors.title
+                                    ? 'border-rose-400 bg-rose-50/30 text-rose-900 focus:border-rose-500'
+                                    : 'border-slate-200 bg-white text-slate-800 hover:border-slate-300'
+                                }`}
+                              />
+                            </div>
                           </div>
 
-                          {/* Category select */}
-                          <div className="shrink-0">
-                            <select
-                              value={task.category}
-                              data-testid={`task-category-select-${mIdx}-${tIdx}`}
-                              aria-label="Task category"
-                              aria-errormessage={`task-category-error-${mIdx}-${tIdx}`}
-                              onChange={(e) =>
-                                updateTaskCategory(mIdx, tIdx, e.target.value)
-                              }
-                              className={`text-xs font-semibold rounded-lg border py-1 px-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                taskErrors.category
-                                  ? 'border-rose-400 bg-rose-50 text-rose-800'
-                                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                              }`}
-                            >
-                              <option value="Frontend">Frontend</option>
-                              <option value="Backend">Backend</option>
-                              <option value="Database">Database</option>
-                              <option value="Testing">Testing</option>
-                              <option value="Documentation">Documentation</option>
-                            </select>
-                          </div>
+                          {/* Category + Priority + Actions */}
+                          <div className="flex items-center gap-2 pl-6 md:pl-0 shrink-0">
+                            {/* Category select */}
+                            <div className="shrink-0">
+                              <select
+                                value={task.category}
+                                data-testid={`task-category-select-${mIdx}-${tIdx}`}
+                                aria-label="Task category"
+                                aria-errormessage={`task-category-error-${mIdx}-${tIdx}`}
+                                onChange={(e) =>
+                                  updateTaskCategory(mIdx, tIdx, e.target.value)
+                                }
+                                className={`text-xs font-semibold rounded-lg border py-1 px-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                  taskErrors.category
+                                    ? 'border-rose-400 bg-rose-50 text-rose-800'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                }`}
+                              >
+                                <option value="Frontend">Frontend</option>
+                                <option value="Backend">Backend</option>
+                                <option value="Database">Database</option>
+                                <option value="Testing">Testing</option>
+                                <option value="Documentation">Documentation</option>
+                              </select>
+                            </div>
 
-                          {/* Priority select */}
-                          <div className="shrink-0">
-                            <select
-                              value={task.priority}
-                              data-testid={`task-priority-select-${mIdx}-${tIdx}`}
-                              aria-label="Task priority"
-                              aria-errormessage={`task-priority-error-${mIdx}-${tIdx}`}
-                              onChange={(e) =>
-                                updateTaskPriority(mIdx, tIdx, e.target.value)
-                              }
-                              className={`text-xs font-semibold rounded-lg border py-1 px-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
-                                taskErrors.priority
-                                  ? 'border-rose-400 bg-rose-50 text-rose-800'
-                                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                              }`}
-                            >
-                              <option value="High">High</option>
-                              <option value="Medium">Medium</option>
-                              <option value="Low">Low</option>
-                            </select>
-                          </div>
+                            {/* Priority select */}
+                            <div className="shrink-0">
+                              <select
+                                value={task.priority}
+                                data-testid={`task-priority-select-${mIdx}-${tIdx}`}
+                                aria-label="Task priority"
+                                aria-errormessage={`task-priority-error-${mIdx}-${tIdx}`}
+                                onChange={(e) =>
+                                  updateTaskPriority(mIdx, tIdx, e.target.value)
+                                }
+                                className={`text-xs font-semibold rounded-lg border py-1 px-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${
+                                  taskErrors.priority
+                                    ? 'border-rose-400 bg-rose-50 text-rose-800'
+                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                }`}
+                              >
+                                <option value="High">High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                              </select>
+                            </div>
 
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isEdited && (
+                            {/* Actions */}
+                            <div className="flex items-center gap-1 shrink-0 ml-auto md:ml-0">
+                              {isEdited && (
+                                <button
+                                  type="button"
+                                  onClick={() => resetTask(mIdx, tIdx)}
+                                  data-testid={`reset-task-btn-${mIdx}-${tIdx}`}
+                                  aria-label="Reset to AI suggestion"
+                                  title="Reset to AI suggestion"
+                                  className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
                               <button
                                 type="button"
-                                onClick={() => resetTask(mIdx, tIdx)}
-                                data-testid={`reset-task-btn-${mIdx}-${tIdx}`}
-                                aria-label="Reset to AI suggestion"
-                                title="Reset to AI suggestion"
-                                className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition"
+                                onClick={() => removeTask(mIdx, tIdx)}
+                                data-testid={`remove-task-btn-${mIdx}-${tIdx}`}
+                                aria-label="Remove task"
+                                title="Remove task"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => removeTask(mIdx, tIdx)}
-                              data-testid={`remove-task-btn-${mIdx}-${tIdx}`}
-                              aria-label="Remove task"
-                              title="Remove task"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            </div>
                           </div>
                         </div>
 
@@ -836,20 +841,20 @@ export const PlanPreview: React.FC<PlanPreviewProps> = ({
       </div>
 
       {/* Confirm Action Bar */}
-      <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-3">
+      <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="text-xs text-slate-500">
           Selected tasks will be created in your{' '}
           <span className="font-semibold text-slate-700">Backlog</span>.
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
           {onCancel && (
             <button
               type="button"
               data-testid="cancel-plan-btn"
               onClick={onCancel}
               disabled={isConfirming}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition disabled:opacity-50"
+              className="px-4 py-2 min-h-[44px] text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
@@ -860,7 +865,7 @@ export const PlanPreview: React.FC<PlanPreviewProps> = ({
             data-testid="confirm-plan-btn"
             disabled={selectedCount === 0 || hasValidationErrors || isConfirming}
             onClick={handleConfirm}
-            className="inline-flex items-center justify-center gap-2 h-10 px-5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl transition shadow-md shadow-indigo-600/20 whitespace-nowrap shrink-0"
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl transition shadow-md shadow-indigo-600/20 whitespace-nowrap shrink-0 cursor-pointer"
           >
             {isConfirming ? (
               <>

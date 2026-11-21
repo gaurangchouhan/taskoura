@@ -196,9 +196,9 @@ export const ProjectBoardPage: React.FC = () => {
 
       {/* 4-Column Kanban Board */}
       {isLoadingTasks ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 w-full animate-pulse items-start">
+        <div className="flex md:grid md:grid-cols-2 xl:grid-cols-4 gap-3.5 w-full animate-pulse items-start overflow-x-auto md:overflow-visible no-scrollbar pb-4 md:pb-0">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-64 rounded-2xl bg-white border border-slate-200/80 p-3 shadow-xs" />
+            <div key={i} className="w-[85vw] sm:w-[75vw] max-w-[340px] shrink-0 md:w-auto md:max-w-none md:shrink h-64 rounded-2xl bg-white border border-slate-200/80 p-3 shadow-xs" />
           ))}
         </div>
       ) : (

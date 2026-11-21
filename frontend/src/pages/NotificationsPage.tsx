@@ -19,18 +19,21 @@ export const NotificationsPage: React.FC = () => {
   const { mutate: markRead, isPending: isMarkingRead } = useMarkRead();
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col layout-app">
       <Navbar />
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
+      <main className="flex-1 max-w-page w-full mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12 pt-28 pb-16 min-w-0">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100 shadow-xs">
+              <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100 shadow-xs shrink-0">
                 <Bell className="w-5 h-5" />
               </div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <h1
+                className="font-extrabold text-slate-900 tracking-tight break-words"
+                style={{ fontSize: 'clamp(1.5rem, 2.5vw + 0.75rem, 1.875rem)' }}
+              >
                 Notifications Inbox
               </h1>
             </div>

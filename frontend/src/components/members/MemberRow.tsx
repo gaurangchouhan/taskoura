@@ -104,16 +104,16 @@ export const MemberRow: React.FC<MemberRowProps> = ({
         className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-b-0 gap-3"
       >
         {/* User Info (Avatar + Name + Email) */}
-        <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex items-center gap-3.5 min-w-0 w-full sm:w-auto">
           <Avatar
             src={member.avatarUrl}
             name={member.userName}
             email={member.userEmail}
             size="md"
-            className="rounded-2xl shadow-xs tracking-wider"
+            className="rounded-2xl shadow-xs tracking-wider shrink-0"
           />
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-slate-900 truncate">
                 {member.userName || member.userEmail}
@@ -129,14 +129,17 @@ export const MemberRow: React.FC<MemberRowProps> = ({
               )}
             </div>
 
-            <p className="text-sm text-slate-500 truncate mt-0.5">
+            <p
+              className="text-sm text-slate-500 truncate mt-0.5"
+              title={member.userEmail}
+            >
               {member.userEmail}
             </p>
           </div>
         </div>
 
-        {/* Role & Controls */}
-        <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0">
+        {/* Role & Controls (line 2 on mobile) */}
+        <div className="flex items-center justify-between sm:justify-end gap-3.5 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t border-slate-100/60 sm:border-t-0 flex-wrap">
           {/* Role badge */}
           {member.role === 'Owner' ? (
             <span
@@ -175,7 +178,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
                   setSelectedRole((member.role as 'Owner' | 'Member') || 'Member');
                   setIsRoleModalOpen(true);
                 }}
-                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors cursor-pointer min-h-[44px] sm:min-h-0 flex items-center"
               >
                 Change role
               </button>
@@ -185,7 +188,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
                 disabled={cannotRemove}
                 title={removeExplanation}
                 onClick={() => setIsRemoveModalOpen(true)}
-                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer min-h-[44px] sm:min-h-0 flex items-center"
               >
                 Remove
               </button>
@@ -207,7 +210,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
             }
           }}
         >
-          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-2xl">
+          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h3 id="role-modal-title" className="text-lg font-bold text-slate-900">
@@ -237,7 +240,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
                   id="change-role-select"
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value as 'Owner' | 'Member')}
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:outline-none bg-white transition-colors cursor-pointer"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:outline-none bg-white transition-colors cursor-pointer"
                 >
                   <option value="Member">Member</option>
                   <option value="Owner">Owner</option>
@@ -261,14 +264,14 @@ export const MemberRow: React.FC<MemberRowProps> = ({
                   type="button"
                   onClick={() => setIsRoleModalOpen(false)}
                   disabled={isSubmittingRole}
-                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingRole || (isOnlyOwner && selectedRole === 'Member')}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer min-h-[44px] sm:min-h-0"
                 >
                   <Check className="w-4 h-4" />
                   <span>{isSubmittingRole ? 'Saving...' : 'Save Role'}</span>
@@ -292,7 +295,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
             }
           }}
         >
-          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-2xl">
+          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
@@ -344,7 +347,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
                 type="button"
                 onClick={() => setIsRemoveModalOpen(false)}
                 disabled={isSubmittingRemove}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 min-h-[44px] sm:min-h-0"
               >
                 {cannotRemove ? 'Close' : 'Cancel'}
               </button>
@@ -353,7 +356,7 @@ export const MemberRow: React.FC<MemberRowProps> = ({
                   type="button"
                   onClick={handleRemoveConfirm}
                   disabled={isSubmittingRemove}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-rose-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-rose-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer min-h-[44px] sm:min-h-0"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>{isSubmittingRemove ? 'Removing...' : 'Confirm Remove'}</span>

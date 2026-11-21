@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -16,6 +16,22 @@ interface MemberBarsProps {
 }
 
 export const MemberBars: React.FC<MemberBarsProps> = ({ tasksByMember }) => {
+  const [resizeKey, setResizeKey] = useState(0);
+
+  // Redraw cleanly on orientation change and window resize
+  useEffect(() => {
+    const handleResize = () => setResizeKey((k) => k + 1);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  const hasManyMembers = tasksByMember.length > 5;
+  const chartMinWidth = hasManyMembers ? Math.max(500, tasksByMember.length * 68) : undefined;
+
   return (
     <div
       data-testid="member-bars"
@@ -39,52 +55,58 @@ export const MemberBars: React.FC<MemberBarsProps> = ({ tasksByMember }) => {
           <p className="text-[11px]">Assign tasks to project members to view workload metrics</p>
         </div>
       ) : (
-        <div className="h-64 w-full min-h-[256px]">
-          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
-            <BarChart
-              data={tasksByMember}
-              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                axisLine={{ stroke: '#e2e8f0' }}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 11, fill: '#64748b' }}
-                axisLine={{ stroke: '#e2e8f0' }}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: '0.75rem',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                  fontSize: '12px',
-                }}
-              />
-              <Legend
-                verticalAlign="bottom"
-                iconType="circle"
-                wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-              />
-              <Bar
-                name="Assigned"
-                dataKey="assigned"
-                fill="#0284c7"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                name="Completed"
-                dataKey="completed"
-                fill="#059669"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="w-full overflow-x-auto">
+          <div
+            className="h-64 min-h-[256px] w-full"
+            style={chartMinWidth ? { minWidth: `${chartMinWidth}px` } : undefined}
+          >
+            <ResponsiveContainer key={resizeKey} width="100%" height="100%" minWidth={100} minHeight={200}>
+              <BarChart
+                data={tasksByMember}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                  interval={0}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '0.75rem',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend
+                  verticalAlign="bottom"
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                />
+                <Bar
+                  name="Assigned"
+                  dataKey="assigned"
+                  fill="#0284c7"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  name="Completed"
+                  dataKey="completed"
+                  fill="#059669"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>

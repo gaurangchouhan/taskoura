@@ -19,6 +19,15 @@ export function getStatusBadgeClass(status) {
   return 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200';
 }
 
+export function getStatusDotClass(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('progress')) return 'bg-sky-500';
+  if (s.includes('review') || s.includes('test')) return 'bg-amber-500';
+  if (s.includes('complete') || s.includes('done')) return 'bg-emerald-500';
+  if (s.includes('block')) return 'bg-rose-500';
+  return 'bg-slate-400';
+}
+
 /**
  * DayCell: displays a single day in the MonthGrid.
  * @param {Object} props
@@ -27,6 +36,7 @@ export function getStatusBadgeClass(status) {
  * @param {any[]} [props.tasks]
  * @param {boolean} [props.isProjectDeadline]
  * @param {(taskId: string) => void} [props.onTaskClick]
+ * @param {(dayDate: Date, tasks: any[]) => void} [props.onSelectDay]
  */
 export const DayCell = ({
   dayDate,
@@ -34,6 +44,7 @@ export const DayCell = ({
   tasks = [],
   isProjectDeadline = false,
   onTaskClick = undefined,
+  onSelectDay = undefined,
 }) => {
   const [showPopover, setShowPopover] = useState(false);
   const popoverRef = useRef(null);
@@ -65,19 +76,26 @@ export const DayCell = ({
     }
   };
 
+  const handleCellClick = () => {
+    if (onSelectDay) {
+      onSelectDay(dayDate, tasks);
+    }
+  };
+
   return (
     <div
       data-testid={`day-cell-${dateKey}`}
-      className={`min-h-[110px] sm:min-h-[125px] p-1.5 sm:p-2 border-b border-r border-slate-200 relative flex flex-col justify-between transition-colors ${
+      onClick={handleCellClick}
+      className={`min-h-[52px] sm:min-h-[64px] md:min-h-[75px] lg:min-h-[125px] p-1 sm:p-1.5 lg:p-2 border-b border-r border-slate-200 relative flex flex-col justify-between transition-colors cursor-pointer md:cursor-default select-none ${
         !isCurrentMonth ? 'bg-slate-50/70 text-slate-400' : 'bg-white text-slate-800'
       } ${isCurrentDay ? 'bg-sky-50/30' : ''}`}
     >
       {/* Top Header: Day Number + Optional Project Deadline Marker */}
-      <div className="flex items-start justify-between gap-1 mb-1">
+      <div className="flex items-start justify-between gap-1 mb-0.5 sm:mb-1">
         <span
           className={`text-xs font-semibold inline-flex items-center justify-center ${
             isCurrentDay
-              ? 'w-6 h-6 rounded-full bg-sky-600 text-white shadow-xs font-bold'
+              ? 'w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-sky-600 text-white shadow-xs font-bold text-[11px] sm:text-xs'
               : isCurrentMonth
               ? 'text-slate-700'
               : 'text-slate-400'
@@ -90,16 +108,34 @@ export const DayCell = ({
           <span
             data-testid="project-deadline-marker"
             title="Project Deadline"
-            className="inline-flex items-center gap-1 text-[10px] font-bold tracking-tight text-amber-800 bg-amber-100 border border-amber-300 rounded px-1.5 py-0.5 shadow-2xs"
+            className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold tracking-tight text-amber-800 bg-amber-100 border border-amber-300 rounded px-1 sm:px-1.5 py-0.5 shadow-2xs"
           >
-            <Flag className="w-2.5 h-2.5 text-amber-700" />
+            <Flag className="w-2 sm:w-2.5 h-2 sm:h-2.5 text-amber-700" />
             <span className="hidden sm:inline">Deadline</span>
           </span>
         )}
       </div>
 
-      {/* Task Chips Container */}
-      <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+      {/* Mobile & Tablet Compact View: Colored dots + count (below lg) */}
+      {tasks.length > 0 && (
+        <div className="flex lg:hidden items-center justify-center gap-1 mt-auto pt-1 flex-wrap">
+          {tasks.slice(0, 3).map((task) => (
+            <span
+              key={task.id}
+              className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${getStatusDotClass(task.status)}`}
+              title={`${task.title} (${task.status || 'No status'})`}
+            />
+          ))}
+          {tasks.length > 3 && (
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 leading-none">
+              +{tasks.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Desktop Task Chips Container (lg and above) */}
+      <div className="hidden lg:flex flex-1 flex-col gap-1 overflow-hidden">
         {visibleTasks.map((task) => {
           const badgeClass = getStatusBadgeClass(task.status);
           return (

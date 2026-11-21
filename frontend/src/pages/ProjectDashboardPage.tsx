@@ -78,8 +78,8 @@ export const ProjectDashboardPage: React.FC = () => {
       {/* AI Recommendation Banner */}
       <NextTaskCard projectId={projectId} />
 
-      {/* Top 4 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Top 4 Stat Cards: 4 per row from xl, 2 per row from sm, 1 per row below sm */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           title="Total Tasks"
           value={stats.totalTasks}

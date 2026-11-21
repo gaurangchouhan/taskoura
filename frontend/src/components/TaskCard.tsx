@@ -136,7 +136,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     <div
       data-testid={`task-card-${task.id}`}
       onClick={onClick}
-      className={`relative rounded-xl bg-white border border-slate-200/90 transition-all duration-200 ${
+      className={`relative rounded-xl bg-white border border-slate-200/90 transition-all duration-200 touch-manipulation select-none ${
         isFloating
           ? 'shadow-xl shadow-sky-500/10 border-sky-300 ring-2 ring-sky-400/20'
           : 'shadow-sm hover:shadow-md hover:border-slate-300'
@@ -172,9 +172,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </span>
       </div>
 
-      {/* Task Title */}
+      {/* Task Title - Wraps/clamps up to 3 lines */}
       <h4
-        className={`font-semibold text-slate-900 tracking-tight leading-snug line-clamp-2 ${
+        className={`font-semibold text-slate-900 tracking-tight leading-snug line-clamp-3 break-words ${
           compact ? 'text-xs mb-1.5' : 'text-sm mb-2.5'
         }`}
       >

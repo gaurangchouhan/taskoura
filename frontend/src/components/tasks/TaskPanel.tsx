@@ -98,6 +98,27 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
     setSearchParams(searchParams, { replace: true });
   };
 
+  // Close on Escape or back button navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedTaskId) {
+        handleClose();
+      }
+    };
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (!params.get('task')) {
+        setIsEditing(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [selectedTaskId, searchParams]);
+
   // If ?task points to an invalid ID once tasks have finished loading, close and toast
   useEffect(() => {
     if (selectedTaskId && !isLoadingTasks && !selectedTask) {
@@ -293,10 +314,10 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
         onClick={handleClose}
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-xl w-full flex pl-10">
-        <div className="w-full bg-white shadow-2xl border-l border-slate-200 flex flex-col h-full overflow-hidden animate-slide-in-right">
+      <div className="fixed inset-0 md:inset-y-0 md:left-auto md:right-0 md:max-w-xl w-full flex md:pl-10">
+        <div className="w-full bg-white shadow-2xl md:border-l border-slate-200 flex flex-col h-full overflow-hidden animate-slide-in-right">
           {/* Header */}
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50">
+          <div className="sticky top-0 z-20 p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-white/95 backdrop-blur-md safe-top shrink-0">
             <div className="flex items-center gap-2">
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${cat.bg} ${cat.text} ${cat.border}`}
@@ -321,7 +342,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                     setIsEditing(true);
                   }}
                   data-testid="edit-task-button"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer min-h-[36px]"
                   aria-label="Edit task"
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -334,7 +355,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   type="button"
                   onClick={() => setIsConfirmDeleteOpen(true)}
                   data-testid="delete-task-button"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer min-h-[36px]"
                   aria-label="Delete task"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -345,7 +366,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
               <button
                 type="button"
                 onClick={handleClose}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer min-h-[36px]"
                 aria-label="Close task details panel"
               >
                 <X className="w-5 h-5" />
@@ -354,7 +375,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
           </div>
 
           {/* Panel Body */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 safe-bottom">
             {isEditing ? (
               /* Edit Form Area */
               <form onSubmit={handleSave} className="space-y-4" data-testid="edit-task-form">
@@ -622,29 +643,42 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   </div>
                 </div>
 
-                {/* Form Action Buttons */}
-                <div className="mt-6 flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetForm(selectedTask);
-                      setIsEditing(false);
-                    }}
-                    disabled={isUpdating}
-                    data-testid="cancel-edit-task-button"
-                    className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSaveDisabled}
-                    data-testid="save-task-button"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {isUpdating && <Loader2 className="w-4 h-4 animate-spin" />}
-                    <span>{isUpdating ? 'Saving...' : 'Save'}</span>
-                  </button>
+                {/* Form Action Buttons - Sticky on mobile and desktop */}
+                <div className="sticky bottom-0 z-20 -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 sm:p-5 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-between gap-2.5 safe-bottom shadow-lg">
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmDeleteOpen(true)}
+                      disabled={isUpdating}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer min-h-[36px]"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2.5 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetForm(selectedTask);
+                        setIsEditing(false);
+                      }}
+                      disabled={isUpdating}
+                      data-testid="cancel-edit-task-button"
+                      className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50 cursor-pointer min-h-[44px]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSaveDisabled}
+                      data-testid="save-task-button"
+                      className="inline-flex items-center gap-1.5 px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 cursor-pointer min-h-[44px]"
+                    >
+                      {isUpdating && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>{isUpdating ? 'Saving...' : 'Save'}</span>
+                    </button>
+                  </div>
                 </div>
               </form>
             ) : (

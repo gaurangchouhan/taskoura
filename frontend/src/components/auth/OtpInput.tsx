@@ -73,20 +73,22 @@ export const OtpInput: React.FC<OtpInputProps> = ({
   };
 
   return (
-    <div className="flex justify-center gap-3.5 mb-6" onPaste={handlePaste}>
+    <div className="flex justify-center gap-2 sm:gap-3.5 mb-6" onPaste={handlePaste}>
       {digits.map((digit, idx) => (
         <input
           key={idx}
           ref={(el) => (inputsRef.current[idx] = el)}
           type="text"
           inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="one-time-code"
           maxLength={1}
           disabled={disabled}
           value={digit}
           onChange={(e) => handleChange(idx, e)}
           onKeyDown={(e) => handleKeyDown(idx, e)}
           aria-label={`Digit ${idx + 1}`}
-          className={`w-14 h-16 text-center text-2xl font-bold font-mono rounded-2xl border transition-all shadow-inner focus:outline-none ${
+          className={`w-11 h-14 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-bold font-mono rounded-xl sm:rounded-2xl border transition-all shadow-inner focus:outline-none ${
             error
               ? 'border-rose-300 bg-rose-50/50 text-rose-900 focus:ring-4 focus:ring-rose-500/15 focus:border-rose-500'
               : 'border-slate-200 bg-slate-50 text-slate-900 focus:bg-white focus:border-sky-500 focus:ring-4 focus:ring-sky-500/15'

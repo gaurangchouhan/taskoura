@@ -126,28 +126,28 @@ export const AiPlanModal: React.FC<AiPlanModalProps> = ({
     <>
       <div
         data-testid="ai-plan-modal"
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
         onClick={(e) => {
           if (e.target === e.currentTarget && !isGenerating && !isConfirming) {
             handleRequestClose();
           }
         }}
       >
-        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-scale-up flex flex-col max-h-[85vh]">
+        <div className="w-full h-full sm:h-auto sm:max-h-[calc(100dvh-2rem)] max-w-none sm:max-w-2xl bg-white rounded-none sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-scale-up flex flex-col">
           {/* Modal Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
+          <div className="flex items-center justify-between p-4 sm:px-6 sm:py-4 border-b border-slate-100 bg-slate-50/70 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
                 <Sparkles className="w-5 h-5" />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   <span>AI Project Plan Breakdown</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
                     Sprint Architect
                   </span>
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 truncate">
                   Automated module and task breakdown based on your project stack
                 </p>
               </div>
@@ -157,7 +157,7 @@ export const AiPlanModal: React.FC<AiPlanModalProps> = ({
               type="button"
               onClick={handleRequestClose}
               disabled={isGenerating || isConfirming}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition disabled:opacity-50 cursor-pointer min-h-[36px]"
               aria-label="Close plan modal"
             >
               <X className="w-5 h-5" />
@@ -165,7 +165,7 @@ export const AiPlanModal: React.FC<AiPlanModalProps> = ({
           </div>
 
           {/* Modal Content */}
-          <div className="p-6 overflow-y-auto flex-1">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 safe-bottom">
             {/* Loading state */}
             {isGenerating && (
               <AiLoading

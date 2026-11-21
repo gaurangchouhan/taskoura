@@ -99,7 +99,7 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
                   if (errorMessage) setErrorMessage('');
                 }}
                 placeholder="colleague@example.com"
-                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:outline-none transition-colors"
+                className="w-full h-11 pl-10 pr-3.5 rounded-xl border border-slate-200 text-base sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:outline-none transition-colors"
               />
             </div>
           </div>
@@ -114,7 +114,7 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
                 id="invite-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'Owner' | 'Member')}
-                className="w-full h-11 appearance-none pl-3.5 pr-8 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:outline-none bg-white transition-colors cursor-pointer"
+                className="w-full h-11 appearance-none pl-3.5 pr-8 rounded-xl border border-slate-200 text-base sm:text-sm font-medium text-slate-700 focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 focus:outline-none bg-white transition-colors cursor-pointer"
               >
                 <option value="Member">Member</option>
                 <option value="Owner">Owner</option>
@@ -128,7 +128,7 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
             <button
               type="submit"
               disabled={isPending || !email.trim()}
-              className="w-full h-11 px-5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+              className="w-full h-11 min-h-[44px] px-5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <UserPlus className="w-4 h-4 shrink-0" />
               <span>{isPending ? 'Inviting...' : 'Invite Member'}</span>

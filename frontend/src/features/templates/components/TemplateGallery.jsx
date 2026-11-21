@@ -41,9 +41,9 @@ export const TemplateGallery = ({
           }
         }}
       >
-        <div className="w-full max-w-4xl max-h-[85vh] bg-white rounded-3xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+        <div className="w-full max-w-4xl max-h-[calc(100dvh-2rem)] bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
           {/* Header */}
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-gradient-to-r from-slate-50 via-white to-sky-50/30">
+          <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-gradient-to-r from-slate-50 via-white to-sky-50/30 shrink-0">
             <div className="flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-sky-500/20">
                 <LayoutTemplate className="w-6 h-6" />
@@ -131,14 +131,14 @@ export const TemplateGallery = ({
           </div>
 
           {/* Footer note */}
-          <div className="p-4 px-6 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between text-xs text-slate-500">
+          <div className="p-3.5 sm:p-4 px-4 sm:px-6 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between text-xs text-slate-500 shrink-0 safe-bottom">
             <span>
               Applying a template adds pre-configured tasks without overwriting existing work.
             </span>
             <button
               type="button"
               onClick={onClose}
-              className="font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
+              className="font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer min-h-[44px] px-3 py-2 rounded-xl"
             >
               Cancel
             </button>

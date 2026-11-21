@@ -62,11 +62,11 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
         }
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-2xl animate-scale-in">
+      <div className="w-full max-w-md bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-5 sm:p-7 shadow-2xl animate-scale-in max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shadow-2xs shrink-0">
               <Trash2 className="w-5 h-5 text-rose-600" />
             </div>
             <div>
@@ -80,7 +80,7 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer min-h-[36px]"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -114,7 +114,7 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
               value={confirmationName}
               onChange={(e) => setConfirmationName(e.target.value)}
               placeholder={project.name}
-              className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400 font-medium"
+              className="w-full px-3.5 py-2.5 h-12 sm:h-11 text-base sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400 font-medium"
             />
           </div>
 
@@ -125,7 +125,7 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
               data-testid="cancel-delete-project-button"
               onClick={onClose}
               disabled={isPending}
-              className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 min-h-[44px] text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
@@ -133,7 +133,7 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
               type="submit"
               data-testid="confirm-delete-project-button"
               disabled={!isExactMatch || isPending}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:hover:bg-rose-600 disabled:cursor-not-allowed rounded-xl transition-all shadow-md shadow-rose-600/20 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] text-xs sm:text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:hover:bg-rose-600 disabled:cursor-not-allowed rounded-xl transition-all shadow-md shadow-rose-600/20 cursor-pointer"
             >
               {isPending && <Loader2 className="w-4 h-4 animate-spin text-white" />}
               <span>{isPending ? 'Deleting...' : 'Delete project'}</span>
