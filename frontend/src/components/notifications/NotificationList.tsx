@@ -74,7 +74,7 @@ export const NotificationList: React.FC<NotificationListProps> = ({
               data-testid={`mark-read-btn-${n.id}`}
               disabled={isMarkingRead}
               onClick={() => onMarkRead(n.id)}
-              className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold text-sky-700 bg-sky-100/70 hover:bg-sky-200/70 border border-sky-200 rounded-xl transition whitespace-nowrap shrink-0 self-start sm:self-auto cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 h-10 sm:h-8 px-4 sm:px-3.5 text-xs font-semibold text-sky-700 bg-sky-100/70 hover:bg-sky-200/70 border border-sky-200 rounded-xl transition whitespace-nowrap shrink-0 self-stretch sm:self-auto cursor-pointer disabled:opacity-50"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Mark as read</span>

@@ -1,6 +1,10 @@
 import React, { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { isTokenExpired } from '../lib/token';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,6 +18,9 @@ export const ScrollExperience: React.FC = () => {
 
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const currentFrameRef = useRef<number>(0);
+
+  const { user } = useAuth();
+  const hasValidToken = !isTokenExpired();
 
   // Helper to draw an image centered with cover aspect ratio
   const drawSpecificImage = (img: HTMLImageElement) => {
@@ -33,7 +40,9 @@ export const ScrollExperience: React.FC = () => {
     const renderWidth = img.naturalWidth * ratio;
     const renderHeight = img.naturalHeight * ratio;
     const shiftX = (width - renderWidth) / 2;
-    const shiftY = (height - renderHeight) / 2;
+    // On small viewports below 768px, shift artwork down so it never collides with hero headline
+    const yOffset = window.innerWidth < 768 ? height * 0.12 : 0;
+    const shiftY = (height - renderHeight) / 2 + yOffset;
 
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, shiftX, shiftY, renderWidth, renderHeight);
@@ -70,10 +79,18 @@ export const ScrollExperience: React.FC = () => {
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       drawFrame(currentFrameRef.current);
+      ScrollTrigger.refresh();
+    };
+
+    const handleOrientationChange = () => {
+      setTimeout(() => {
+        handleResize();
+      }, 200);
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
 
     // 1. Load the first frame immediately for instant establishing shot
     const firstImg = new Image();
@@ -100,14 +117,16 @@ export const ScrollExperience: React.FC = () => {
     }
     imagesRef.current = imgs;
 
-    // 3. Setup GSAP ScrollTrigger timeline to scrub through frames & dissolve text
+    // 3. Setup GSAP ScrollTrigger timeline using matchMedia for smooth mobile handling
     const container = containerRef.current;
     const pinned = pinnedRef.current;
     if (!container || !pinned) return;
 
     const frameTracker = { frame: 0 };
+    const mm = gsap.matchMedia();
 
-    const ctx = gsap.context(() => {
+    mm.add('(min-width: 768px)', () => {
+      // Desktop & Tablet Landscape: full pinned 380vh scrubbing
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container,
@@ -117,7 +136,6 @@ export const ScrollExperience: React.FC = () => {
           scrub: 0.5,
           anticipatePin: 1,
           onLeaveBack: () => {
-            // When user scrolls back to the very top, ensure the headline is 100% visible
             if (heroOverlayRef.current) {
               gsap.set(heroOverlayRef.current, {
                 opacity: 1,
@@ -130,29 +148,15 @@ export const ScrollExperience: React.FC = () => {
         },
       });
 
-      // Bidirectional cinematic dissolve: smoothly disappears on scroll down, and reappears on scroll up
       if (heroOverlayRef.current) {
         tl.fromTo(
           heroOverlayRef.current,
-          {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            filter: 'blur(0px)',
-          },
-          {
-            opacity: 0,
-            scale: 0.92,
-            y: -32,
-            filter: 'blur(12px)',
-            duration: 0.08,
-            ease: 'power1.out',
-          },
+          { opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' },
+          { opacity: 0, scale: 0.92, y: -32, filter: 'blur(12px)', duration: 0.08, ease: 'power1.out' },
           0
         );
       }
 
-      // Smoothly advance through the 250 video frames as the user scrolls
       tl.to(
         frameTracker,
         {
@@ -169,37 +173,58 @@ export const ScrollExperience: React.FC = () => {
         },
         0
       );
-    }, container);
+    });
+
+    mm.add('(max-width: 767px)', () => {
+      // Mobile Phones: unpinned fluid fade without 380vh dead scroll
+      if (heroOverlayRef.current) {
+        gsap.to(heroOverlayRef.current, {
+          scrollTrigger: {
+            trigger: container,
+            start: 'top top',
+            end: '40% top',
+            scrub: true,
+          },
+          opacity: 0,
+          y: -24,
+          ease: 'power1.out',
+        });
+      }
+    });
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      ctx.revert();
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      mm.revert();
     };
   }, []);
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[380vh] bg-white"
+      className="relative w-full min-h-[100dvh] md:h-[380vh] bg-white"
     >
-      {/* Pinned Fullscreen Viewport */}
+      {/* Viewport container: sticky on desktop, relative full-screen on mobile */}
       <div
         ref={pinnedRef}
-        className="sticky top-0 left-0 w-full h-screen overflow-hidden flex items-center justify-center bg-white"
+        className="relative md:sticky top-0 left-0 w-full min-h-[100dvh] md:h-screen overflow-hidden flex items-center justify-center bg-white"
       >
-        {/* Edge-to-edge canvas displaying the 250 scroll-driven frames */}
+        {/* Edge-to-edge canvas displaying the 250 scroll-driven frames; toned down on mobile below md */}
         <canvas
           ref={canvasRef}
-          className="absolute inset-0 w-full h-full block"
+          className="absolute inset-0 w-full h-full block opacity-40 md:opacity-100 transition-opacity"
         />
 
-        {/* Cinematic Headline Overlay placed exactly in the open space between the laptops */}
+        {/* Subtle backdrop overlay on mobile to guarantee crystal-clear headline readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/70 via-white/30 to-white/80 md:hidden pointer-events-none" />
+
+        {/* Cinematic Headline Overlay placed in open space */}
         <div
           ref={heroOverlayRef}
-          className="absolute inset-x-0 top-24 sm:top-28 z-20 flex flex-col items-center text-center px-4 max-w-4xl mx-auto pointer-events-none will-change-transform"
+          className="relative z-20 flex flex-col items-center text-center px-4 max-w-4xl mx-auto will-change-transform pt-24 pb-12 sm:pt-28"
         >
           {/* Refined Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-xl border border-sky-200/70 shadow-sm text-xs font-semibold text-slate-700 mb-3.5">
+          <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-xl border border-sky-200/80 shadow-xs text-xs font-semibold text-slate-700 mb-3.5">
             <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
             <span className="bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent font-bold">
               Taskoura
@@ -209,7 +234,10 @@ export const ScrollExperience: React.FC = () => {
           </div>
 
           {/* Premium Main Headline */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.08] drop-shadow-xs">
+          <h1
+            className="font-black tracking-tight text-slate-900 leading-[1.08] drop-shadow-xs"
+            style={{ fontSize: 'clamp(2rem, 5vw + 1rem, 3.75rem)' }}
+          >
             Plan Projects. Track Progress.{' '}
             <span className="bg-gradient-to-r from-sky-600 via-sky-500 to-indigo-600 bg-clip-text text-transparent">
               Work Together.
@@ -217,11 +245,46 @@ export const ScrollExperience: React.FC = () => {
           </h1>
 
           {/* Project-specific Subtitle */}
-          <p className="mt-3 text-sm sm:text-base text-slate-600 font-normal max-w-xl mx-auto leading-relaxed drop-shadow-xs">
+          <p
+            className="mt-3 text-slate-600 font-normal max-w-xl mx-auto leading-relaxed drop-shadow-xs"
+            style={{ fontSize: 'clamp(0.95rem, 1.5vw + 0.5rem, 1.125rem)' }}
+          >
             Organize tasks, collaborate with your team, and manage your software projects from start to finish.
           </p>
+
+          {/* Hero Action Buttons - reachable on mobile without scrolling, stack full width below sm */}
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto px-2">
+            {hasValidToken ? (
+              <Link
+                to="/app/projects"
+                className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-sky-600 via-sky-500 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/25 hover:shadow-sky-500/35 transition-all flex items-center justify-center gap-2 pointer-events-auto"
+              >
+                <span>Open workspace</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/register"
+                  className="w-full sm:w-auto min-h-[48px] px-7 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-sky-600 via-sky-500 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/25 hover:shadow-sky-500/35 transition-all flex items-center justify-center gap-2 pointer-events-auto"
+                >
+                  <span>Get Started Free</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <a
+                  href="/#features"
+                  className="w-full sm:w-auto min-h-[48px] px-6 py-3 rounded-xl font-semibold text-sm text-slate-700 bg-white/90 hover:bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all flex items-center justify-center gap-2 pointer-events-auto"
+                >
+                  <Sparkles className="w-4 h-4 text-sky-600" />
+                  <span>Explore Features</span>
+                </a>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default ScrollExperience;

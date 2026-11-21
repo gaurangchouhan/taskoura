@@ -3,6 +3,13 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      screens: {
+        xs: '480px',
+        '3xl': '1920px',
+      },
+      maxWidth: {
+        page: 'var(--page-max)',
+      },
       colors: {
         ice: {
           50: '#f8fafc',

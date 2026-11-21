@@ -26,7 +26,7 @@ export const NotFoundPage: React.FC = () => {
 
           <Link
             to="/"
-            className="w-full py-3 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
+            className="w-full min-h-[44px] py-3.5 sm:py-3 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
           >
             <span>Return to Taskoura Home</span>
             <ArrowRight className="w-4 h-4" />

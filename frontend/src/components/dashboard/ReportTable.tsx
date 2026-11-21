@@ -123,12 +123,12 @@ export const ReportTable: React.FC<ReportTableProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end sm:justify-start flex-wrap">
           <button
             type="button"
             data-testid="print-report-btn"
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl shadow-xs transition"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200/80 rounded-xl shadow-xs transition cursor-pointer min-h-[44px] sm:min-h-0 flex-1 sm:flex-initial"
           >
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span>Print Report</span>
@@ -139,7 +139,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({
             data-testid="download-csv-btn"
             onClick={handleDownloadCsv}
             disabled={members.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl shadow-md shadow-sky-500/20 transition disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl shadow-md shadow-sky-500/20 transition disabled:opacity-50 cursor-pointer min-h-[44px] sm:min-h-0 flex-1 sm:flex-initial"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download CSV</span>
@@ -167,8 +167,8 @@ export const ReportTable: React.FC<ReportTableProps> = ({
         </div>
       )}
 
-      {/* Table Container */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden print-clean">
+      {/* Table Container with Sticky First Column and Horizontal Scroll */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden print-clean max-w-full">
         {members.length === 0 ? (
           <div
             data-testid="empty-report"
@@ -181,14 +181,16 @@ export const ReportTable: React.FC<ReportTableProps> = ({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-w-full">
             <table
               data-testid="report-table"
-              className="w-full text-left border-collapse text-xs"
+              className="w-full text-left border-collapse text-xs min-w-[720px] sm:min-w-full"
             >
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4">Contributor</th>
+                  <th className="py-3 px-4 sticky left-0 z-20 bg-slate-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
+                    Contributor
+                  </th>
                   <th className="py-3 px-4 text-center">Assigned</th>
                   <th className="py-3 px-4 text-center">Completed</th>
                   <th className="py-3 px-4 text-center">On-Time / Late</th>
@@ -211,14 +213,14 @@ export const ReportTable: React.FC<ReportTableProps> = ({
                       data-testid={`report-row-${m.userId}`}
                       className="hover:bg-slate-50/60 transition-colors"
                     >
-                      {/* Name */}
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">
-                        <div className="flex items-center gap-2">
+                      {/* Name - Sticky Column */}
+                      <td className="py-3.5 px-4 font-semibold text-slate-900 sticky left-0 z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                           <span>{m.name}</span>
                           {isTopCompleter && (
                             <span
                               title="Top Deliverer"
-                              className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center"
+                              className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"
                             >
                               <Award className="w-2.5 h-2.5" />
                             </span>

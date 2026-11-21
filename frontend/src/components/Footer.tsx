@@ -14,10 +14,10 @@ export const Footer: React.FC = () => {
 
   return (
     <footer className="bg-slate-50 border-t border-slate-200/80 py-12 text-slate-600 text-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-200">
+      <div className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 2xl:px-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-10 border-b border-slate-200">
           {/* Brand Info */}
-          <div className="md:col-span-1 space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center text-white">
                 <FolderGit2 className="w-4 h-4" />

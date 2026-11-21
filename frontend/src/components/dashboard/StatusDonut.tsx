@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   PieChart,
   Pie,
@@ -41,6 +41,19 @@ export function buildDonutData(tasksByStatus: TasksByStatus): StatusDonutItem[] 
 }
 
 export const StatusDonut: React.FC<StatusDonutProps> = ({ tasksByStatus }) => {
+  const [resizeKey, setResizeKey] = useState(0);
+
+  // Redraw cleanly on orientation change and window resize
+  useEffect(() => {
+    const handleResize = () => setResizeKey((k) => k + 1);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
   const data = buildDonutData(tasksByStatus);
   const totalTasks = data.reduce((acc, curr) => acc + curr.value, 0);
 
@@ -68,7 +81,7 @@ export const StatusDonut: React.FC<StatusDonutProps> = ({ tasksByStatus }) => {
         </div>
       ) : (
         <div className="h-64 w-full min-h-[256px]">
-          <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
+          <ResponsiveContainer key={resizeKey} width="100%" height="100%" minWidth={100} minHeight={200}>
             <PieChart>
               <Pie
                 data={data}

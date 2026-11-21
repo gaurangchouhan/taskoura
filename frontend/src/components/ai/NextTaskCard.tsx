@@ -91,14 +91,14 @@ export const NextTaskCard: React.FC<NextTaskCardProps> = ({
           </div>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+        {/* Right: Actions (stacks below text on phones) */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end sm:justify-start pt-2 sm:pt-0 border-t border-indigo-100/60 sm:border-t-0 shrink-0">
           <button
             type="button"
             data-testid="refresh-next-task-btn"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition disabled:opacity-50"
+            className="p-2.5 sm:p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center cursor-pointer"
             title="Refresh AI recommendation"
             aria-label="Refresh AI recommendation"
           >
@@ -112,7 +112,7 @@ export const NextTaskCard: React.FC<NextTaskCardProps> = ({
               type="button"
               data-testid="open-task-btn"
               onClick={() => handleOpenTask(data.relatedTaskId!)}
-              className="inline-flex items-center gap-2 h-10 px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 h-11 sm:h-10 px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-sm whitespace-nowrap flex-1 sm:flex-initial cursor-pointer min-h-[44px] sm:min-h-0"
             >
               <span>Open task</span>
               <ArrowRight className="w-3.5 h-3.5 shrink-0" />

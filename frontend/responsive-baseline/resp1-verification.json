@@ -1,0 +1,123 @@
+{
+  "horizontalOverflowChecks": [
+    {
+      "viewport": "375x667 (375)",
+      "landingScrollWidth": 375,
+      "landingInnerWidth": 375,
+      "landingOverflow": false,
+      "projectsScrollWidth": 375,
+      "projectsInnerWidth": 375,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "390x844 (390)",
+      "landingScrollWidth": 390,
+      "landingInnerWidth": 390,
+      "landingOverflow": false,
+      "projectsScrollWidth": 390,
+      "projectsInnerWidth": 390,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "667x375 (667)",
+      "landingScrollWidth": 667,
+      "landingInnerWidth": 667,
+      "landingOverflow": false,
+      "projectsScrollWidth": 667,
+      "projectsInnerWidth": 667,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "768x1024 (768)",
+      "landingScrollWidth": 768,
+      "landingInnerWidth": 768,
+      "landingOverflow": false,
+      "projectsScrollWidth": 768,
+      "projectsInnerWidth": 768,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "1024x768 (1024)",
+      "landingScrollWidth": 1024,
+      "landingInnerWidth": 1024,
+      "landingOverflow": false,
+      "projectsScrollWidth": 1024,
+      "projectsInnerWidth": 1024,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "1280x800 (1280)",
+      "landingScrollWidth": 1280,
+      "landingInnerWidth": 1280,
+      "landingOverflow": false,
+      "projectsScrollWidth": 1280,
+      "projectsInnerWidth": 1280,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "1440x900 (1440)",
+      "landingScrollWidth": 1440,
+      "landingInnerWidth": 1440,
+      "landingOverflow": false,
+      "projectsScrollWidth": 1440,
+      "projectsInnerWidth": 1440,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "1920x1080 (1920)",
+      "landingScrollWidth": 1920,
+      "landingInnerWidth": 1920,
+      "landingOverflow": false,
+      "projectsScrollWidth": 1920,
+      "projectsInnerWidth": 1920,
+      "projectsOverflow": false
+    },
+    {
+      "viewport": "2560x1440 (2560)",
+      "landingScrollWidth": 2560,
+      "landingInnerWidth": 2560,
+      "landingOverflow": false,
+      "projectsScrollWidth": 2560,
+      "projectsInnerWidth": 2560,
+      "projectsOverflow": false
+    }
+  ],
+  "keyboardAndTouchChecks": [
+    {
+      "check": "Menu opens on click/touch",
+      "passed": true
+    },
+    {
+      "check": "Menu closes on Escape key",
+      "passed": true
+    },
+    {
+      "check": "Menu closes on outside tap",
+      "passed": true
+    }
+  ],
+  "afterScreenshots": [
+    "after_navbar_landing_390.png",
+    "after_navbar_landing_open_390.png",
+    "after_navbar_workspace_390.png",
+    "after_tab_strip_390.png",
+    "after_footer_390.png",
+    "after_navbar_landing_768.png",
+    "after_navbar_landing_open_768.png",
+    "after_navbar_workspace_768.png",
+    "after_tab_strip_768.png",
+    "after_footer_768.png",
+    "after_navbar_landing_1024.png",
+    "after_navbar_workspace_1024.png",
+    "after_tab_strip_1024.png",
+    "after_footer_1024.png",
+    "after_navbar_landing_1440.png",
+    "after_navbar_workspace_1440.png",
+    "after_tab_strip_1440.png",
+    "after_footer_1440.png",
+    "after_navbar_landing_1920.png",
+    "after_navbar_workspace_1920.png",
+    "after_tab_strip_1920.png",
+    "after_footer_1920.png"
+  ]
+}

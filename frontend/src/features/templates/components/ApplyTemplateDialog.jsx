@@ -75,9 +75,9 @@ export const ApplyTemplateDialog = ({
         }
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-2xl animate-scale-in">
+      <div className="w-full max-w-md bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-5 sm:p-7 shadow-2xl animate-scale-in max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
               <LayoutTemplate className="w-5 h-5" />
@@ -102,7 +102,7 @@ export const ApplyTemplateDialog = ({
         </div>
 
         {/* Content Body */}
-        <div className="py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto py-5 space-y-4">
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
             <p className="text-sm font-semibold text-slate-800 leading-relaxed">
               This adds {template.taskCount} tasks to {projectName}
@@ -126,12 +126,12 @@ export const ApplyTemplateDialog = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 shrink-0 safe-bottom">
           <button
             type="button"
             onClick={handleClose}
             disabled={applyMutation.isPending}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
+            className="px-4 py-2.5 min-h-[44px] rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors disabled:opacity-40 cursor-pointer"
           >
             Cancel
           </button>
@@ -141,7 +141,7 @@ export const ApplyTemplateDialog = ({
             data-testid="confirm-apply-template-btn"
             onClick={handleApply}
             disabled={applyMutation.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] rounded-xl text-sm font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {applyMutation.isPending ? (
               <>

@@ -15,10 +15,10 @@ export const MonthNav = ({
   const monthTitle = format(currentMonth, 'MMMM yyyy');
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 px-2">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2 sm:py-4 px-1 sm:px-2">
       {/* Month & Year Title */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs">
+        <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shadow-xs shrink-0">
           <CalendarIcon className="w-5 h-5" />
         </div>
         <div>
@@ -30,12 +30,12 @@ export const MonthNav = ({
       </div>
 
       {/* Nav Controls: Prev, Today, Next */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-start">
         <button
           type="button"
           onClick={onPrevMonth}
           aria-label="Previous month"
-          className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors cursor-pointer"
+          className="p-2.5 sm:p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -43,7 +43,7 @@ export const MonthNav = ({
         <button
           type="button"
           onClick={onToday}
-          className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+          className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-xs transition-colors cursor-pointer whitespace-nowrap min-h-[44px] flex items-center justify-center"
         >
           Today
         </button>
@@ -52,7 +52,7 @@ export const MonthNav = ({
           type="button"
           onClick={onNextMonth}
           aria-label="Next month"
-          className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors cursor-pointer"
+          className="p-2.5 sm:p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronRight className="w-5 h-5" />
         </button>

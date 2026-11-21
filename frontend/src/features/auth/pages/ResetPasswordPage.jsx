@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, CheckCircle2, AlertCircle, FolderGit2, RefreshCw } from 'lucide-react';
 import { OtpInput } from '../../../components/auth/OtpInput';
 import { useResetPassword, useForgotPassword } from '../hooks';
@@ -9,8 +9,9 @@ import { getErrorMessage, getErrorCode, getRetryAfterSeconds } from '../../../li
 
 export const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
-  const { isAuthenticated } = useAuth();
-  const initialEmail = searchParams.get('email') || '';
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+  const initialEmail = searchParams.get('email') || (isAuthenticated && user?.email) || '';
 
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOtp] = useState('');
@@ -18,7 +19,7 @@ export const ResetPasswordPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [isDeliveryFailed, setIsDeliveryFailed] = useState(false);
   const [attemptsExceeded, setAttemptsExceeded] = useState(false);
@@ -30,12 +31,13 @@ export const ResetPasswordPage = () => {
 
   const timerRef = useRef(null);
 
-  // Sync email from search params if it arrives later
+  // Sync email from search params or auth state if it arrives later
   useEffect(() => {
-    if (initialEmail && !email) {
-      setEmail(initialEmail);
+    const effectiveEmail = searchParams.get('email') || (isAuthenticated && user?.email) || '';
+    if (effectiveEmail && !email) {
+      setEmail(effectiveEmail);
     }
-  }, [initialEmail]);
+  }, [searchParams, isAuthenticated, user, email]);
 
   // Countdown timer for resend code
   useEffect(() => {
@@ -140,7 +142,7 @@ export const ResetPasswordPage = () => {
   return (
     <div
       data-testid="reset-password-page"
-      className="min-h-screen bg-[#f8fafc] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden"
+      className="min-h-[100dvh] bg-[#f8fafc] flex flex-col justify-center py-10 sm:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
     >
       {/* Background glow effects */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-sky-100/60 to-transparent blur-3xl pointer-events-none -z-10" />
@@ -170,7 +172,7 @@ export const ResetPasswordPage = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-900/5">
+        <div className="bg-white py-6 px-5 sm:py-8 sm:px-10 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-900/5">
           {/* Feedback messages */}
           {successMessage && (
             <div
@@ -196,7 +198,7 @@ export const ResetPasswordPage = () => {
                   type="button"
                   data-testid="btn-reset-retry"
                   onClick={lastAction === 'reset' ? handleSubmit : handleResend}
-                  className="text-xs font-bold underline hover:text-rose-800 shrink-0 cursor-pointer"
+                  className="text-xs font-bold underline hover:text-rose-800 shrink-0 cursor-pointer min-h-[44px] flex items-center"
                 >
                   Retry
                 </button>
@@ -217,10 +219,12 @@ export const ResetPasswordPage = () => {
                   data-testid="input-reset-email"
                   type="email"
                   required
+                  autoComplete="email"
+                  inputMode="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="engineer@taskoura.dev"
-                  className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
+                  className="w-full pl-10 pr-4 h-12 sm:h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-base sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
                 />
               </div>
             </div>
@@ -242,7 +246,7 @@ export const ResetPasswordPage = () => {
                   data-testid="btn-resend-code"
                   disabled={(!attemptsExceeded && resendCooldown > 0) || forgotPasswordMutation.isPending}
                   onClick={handleResend}
-                  className="text-xs font-semibold text-sky-600 hover:text-sky-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-semibold text-sky-600 hover:text-sky-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer py-1.5 px-2 -mr-2 min-h-[36px] sm:min-h-0"
                 >
                   <RefreshCw className={`w-3 h-3 ${forgotPasswordMutation.isPending ? 'animate-spin' : ''}`} />
                   <span>
@@ -268,10 +272,11 @@ export const ResetPasswordPage = () => {
                   data-testid="input-new-password"
                   type="password"
                   required
+                  autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Min 8 characters"
-                  className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
+                  className="w-full pl-10 pr-4 h-12 sm:h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-base sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
                 />
               </div>
             </div>
@@ -288,10 +293,11 @@ export const ResetPasswordPage = () => {
                   data-testid="input-confirm-password"
                   type="password"
                   required
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat new password"
-                  className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
+                  className="w-full pl-10 pr-4 h-12 sm:h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-base sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
                 />
               </div>
             </div>
@@ -300,7 +306,7 @@ export const ResetPasswordPage = () => {
               type="submit"
               data-testid="btn-reset-submit"
               disabled={resetPasswordMutation.isPending}
-              className="w-full py-3 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap cursor-pointer mt-4"
+              className="w-full min-h-[44px] py-3.5 sm:py-3 px-5 rounded-xl font-semibold text-base sm:text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap cursor-pointer mt-4"
             >
               {resetPasswordMutation.isPending ? (
                 <>
@@ -319,7 +325,7 @@ export const ResetPasswordPage = () => {
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <Link
               to={isAuthenticated ? '/app/profile' : '/login'}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>{isAuthenticated ? 'Back to Profile' : 'Back to Sign In'}</span>

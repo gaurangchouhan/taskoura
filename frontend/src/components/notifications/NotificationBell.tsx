@@ -65,93 +65,110 @@ export const NotificationBell: React.FC = () => {
         )}
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu / Mobile Bottom Sheet */}
       {isOpen && (
-        <div
-          data-testid="notification-dropdown"
-          className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-scale-up origin-top-right"
-        >
-          {/* Header */}
-          <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-slate-900">Notifications</h4>
-              {hasUnread && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
-                  {unreadCount} new
-                </span>
+        <>
+          <div
+            className="fixed inset-0 bg-slate-900/30 backdrop-blur-2xs z-40 sm:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            data-testid="notification-dropdown"
+            className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 w-full sm:w-96 bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200/80 sm:border-slate-100 overflow-hidden z-50 animate-scale-up sm:origin-top-right safe-bottom max-h-[85dvh] flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-slate-900">Notifications</h4>
+                {hasUnread && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/app/notifications"
+                  onClick={() => setIsOpen(false)}
+                  className="text-xs font-semibold text-sky-600 hover:text-sky-700 transition"
+                >
+                  Inbox
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="sm:hidden p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                  aria-label="Close notifications"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* List of latest 8 */}
+            <div className="overflow-y-auto divide-y divide-slate-100 flex-1 max-h-80 sm:max-h-80">
+              {isLoading ? (
+                <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <Loader2 className="w-5 h-5 animate-spin text-sky-600" />
+                  <span className="text-xs">Loading updates...</span>
+                </div>
+              ) : latestNotifications.length === 0 ? (
+                <div className="py-10 text-center px-4">
+                  <CheckCheck className="w-7 h-7 mx-auto mb-2 text-slate-300 stroke-[1.5]" />
+                  <p className="text-xs font-semibold text-slate-700">All caught up</p>
+                  <p className="text-xs text-slate-400 mt-0.5">No notifications right now.</p>
+                </div>
+              ) : (
+                latestNotifications.map((n) => (
+                  <div
+                    key={n.id}
+                    data-testid={`notification-item-${n.id}`}
+                    onClick={() => handleNotificationClick(n.id, n.isRead)}
+                    className={`p-3.5 flex items-start gap-3 transition cursor-pointer hover:bg-slate-50/80 ${
+                      !n.isRead ? 'bg-sky-50/40' : 'bg-white'
+                    }`}
+                  >
+                    {/* Unread indicator */}
+                    <div className="pt-1.5 shrink-0">
+                      <span
+                        className={`block w-2 h-2 rounded-full ${
+                          !n.isRead ? 'bg-sky-600 shadow-xs' : 'bg-transparent'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p
+                        className={`text-xs break-words leading-relaxed ${
+                          !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-600'
+                        }`}
+                      >
+                        {n.message}
+                      </p>
+                      <span className="text-[11px] text-slate-400 block">
+                        {formatTimeAgo(n.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
 
-            <Link
-              to="/app/notifications"
-              onClick={() => setIsOpen(false)}
-              className="text-xs font-semibold text-sky-600 hover:text-sky-700 transition"
-            >
-              Inbox
-            </Link>
+            {/* Footer Link */}
+            <div className="p-3 bg-slate-50 border-t border-slate-100 text-center shrink-0">
+              <Link
+                to="/app/notifications"
+                onClick={() => setIsOpen(false)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-sky-600 transition min-h-[44px] sm:min-h-0"
+              >
+                <span>View all notifications</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
-
-          {/* List of latest 8 */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-            {isLoading ? (
-              <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-                <Loader2 className="w-5 h-5 animate-spin text-sky-600" />
-                <span className="text-xs">Loading updates...</span>
-              </div>
-            ) : latestNotifications.length === 0 ? (
-              <div className="py-10 text-center px-4">
-                <CheckCheck className="w-7 h-7 mx-auto mb-2 text-slate-300 stroke-[1.5]" />
-                <p className="text-xs font-semibold text-slate-700">All caught up</p>
-                <p className="text-xs text-slate-400 mt-0.5">No notifications right now.</p>
-              </div>
-            ) : (
-              latestNotifications.map((n) => (
-                <div
-                  key={n.id}
-                  data-testid={`notification-item-${n.id}`}
-                  onClick={() => handleNotificationClick(n.id, n.isRead)}
-                  className={`p-3.5 flex items-start gap-3 transition cursor-pointer hover:bg-slate-50/80 ${
-                    !n.isRead ? 'bg-sky-50/40' : 'bg-white'
-                  }`}
-                >
-                  {/* Unread indicator */}
-                  <div className="pt-1.5 shrink-0">
-                    <span
-                      className={`block w-2 h-2 rounded-full ${
-                        !n.isRead ? 'bg-sky-600 shadow-xs' : 'bg-transparent'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p
-                      className={`text-xs break-words leading-relaxed ${
-                        !n.isRead ? 'font-semibold text-slate-900' : 'text-slate-600'
-                      }`}
-                    >
-                      {n.message}
-                    </p>
-                    <span className="text-[11px] text-slate-400 block">
-                      {formatTimeAgo(n.createdAt)}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Footer Link */}
-          <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
-            <Link
-              to="/app/notifications"
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-sky-600 transition"
-            >
-              <span>View all notifications</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -7,8 +7,8 @@ import { getErrorMessage, getErrorCode, getRetryAfterSeconds } from '../../../li
 
 export const ForgotPasswordPage = () => {
   const [searchParams] = useSearchParams();
-  const { isAuthenticated } = useAuth();
-  const initialEmail = searchParams.get('email') || '';
+  const { isAuthenticated, user } = useAuth();
+  const initialEmail = searchParams.get('email') || (isAuthenticated && user?.email) || '';
 
   const [email, setEmail] = useState(initialEmail);
   const [message, setMessage] = useState('');
@@ -22,10 +22,11 @@ export const ForgotPasswordPage = () => {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (initialEmail && !email) {
-      setEmail(initialEmail);
+    const effectiveEmail = searchParams.get('email') || (isAuthenticated && user?.email) || '';
+    if (effectiveEmail && !email) {
+      setEmail(effectiveEmail);
     }
-  }, [initialEmail]);
+  }, [searchParams, isAuthenticated, user, email]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -77,7 +78,7 @@ export const ForgotPasswordPage = () => {
   return (
     <div
       data-testid="forgot-password-page"
-      className="min-h-screen bg-[#f8fafc] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden"
+      className="min-h-[100dvh] bg-[#f8fafc] flex flex-col justify-center py-10 sm:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden"
     >
       {/* Background glow effects */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-sky-100/60 to-transparent blur-3xl pointer-events-none -z-10" />
@@ -107,7 +108,7 @@ export const ForgotPasswordPage = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white py-8 px-6 sm:px-10 rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-900/5">
+        <div className="bg-white py-6 px-5 sm:py-8 sm:px-10 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-900/5">
           {/* Feedback messages */}
           {message && (
             <div
@@ -133,7 +134,7 @@ export const ForgotPasswordPage = () => {
                   type="button"
                   data-testid="btn-forgot-retry"
                   onClick={handleSubmit}
-                  className="text-xs font-bold underline hover:text-rose-800 shrink-0 cursor-pointer"
+                  className="text-xs font-bold underline hover:text-rose-800 shrink-0 cursor-pointer min-h-[44px] flex items-center"
                 >
                   Retry
                 </button>
@@ -153,10 +154,12 @@ export const ForgotPasswordPage = () => {
                   data-testid="input-forgot-email"
                   type="email"
                   required
+                  autoComplete="email"
+                  inputMode="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="engineer@taskoura.dev"
-                  className="w-full pl-10 pr-4 h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
+                  className="w-full pl-10 pr-4 h-12 sm:h-11 rounded-xl border border-slate-200 bg-slate-50/50 text-base sm:text-sm text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-colors"
                 />
               </div>
             </div>
@@ -165,7 +168,7 @@ export const ForgotPasswordPage = () => {
               type="submit"
               data-testid="btn-forgot-submit"
               disabled={forgotPasswordMutation.isPending || !email.trim() || (!attemptsExceeded && resendCooldown > 0)}
-              className="w-full py-3 px-5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap cursor-pointer mt-2"
+              className="w-full min-h-[44px] py-3.5 sm:py-3 px-5 rounded-xl font-semibold text-base sm:text-sm text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 shadow-md shadow-sky-500/20 hover:shadow-sky-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap cursor-pointer mt-2"
             >
               {forgotPasswordMutation.isPending ? (
                 <>
@@ -191,7 +194,7 @@ export const ForgotPasswordPage = () => {
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <Link
               to={isAuthenticated ? '/app/profile' : '/login'}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-sky-600 transition-colors min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>{isAuthenticated ? 'Back to Profile' : 'Back to Sign In'}</span>
