@@ -44,6 +44,7 @@ import {
   profileQueryKeys,
 } from '../hooks';
 import { useAuth } from '../../../context/AuthContext';
+import { BioLockDeviceCard } from '../components/BioLockDeviceCard';
 import {
   formatDate as formatLocalDate,
   getBrowserTimeZone,
@@ -1854,6 +1855,9 @@ export const ProfilePage: React.FC = () => {
                   <ExternalLink className="w-3.5 h-3.5" />
                 </button>
               </div>
+
+              {/* BioLock Hardware Device & Fingerprint Security Card */}
+              <BioLockDeviceCard />
             </div>
 
             {/* SINGLE SAVE & ACTION FOOTER */}

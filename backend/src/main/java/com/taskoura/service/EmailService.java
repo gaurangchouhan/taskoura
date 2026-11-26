@@ -243,6 +243,73 @@ public class EmailService {
                 "Task assigned: " + taskTitle + " [" + projectName + "]", html, plain);
     }
 
+    public void sendBioLockAccessRequestEmail(
+            User leader,
+            String requesterName,
+            String requesterEmail,
+            String projectName,
+            String taskTitle,
+            String documentName,
+            String requestedAt,
+            String expiresAt,
+            String deviceName,
+            boolean deviceOnline) throws Exception {
+        if (leader == null || leader.getEmail() == null) return;
+
+        String safeLeaderName = leader.getName() != null && !leader.getName().isBlank()
+                ? leader.getName().trim() : "Leader";
+        String safeRequester = requesterName != null && !requesterName.isBlank()
+                ? requesterName.trim() : "A team member";
+
+        Context ctx = createContext();
+        ctx.setVariable("leaderName", safeLeaderName);
+        ctx.setVariable("recipientName", safeLeaderName);
+        ctx.setVariable("requesterName", safeRequester);
+        ctx.setVariable("requesterEmail", requesterEmail != null ? requesterEmail.trim() : "");
+        ctx.setVariable("projectName", projectName);
+        ctx.setVariable("taskTitle", taskTitle);
+        ctx.setVariable("documentName", documentName);
+        ctx.setVariable("fileName", documentName);
+        ctx.setVariable("requestedAt", requestedAt);
+        ctx.setVariable("requestTimeUtc", requestedAt);
+        ctx.setVariable("expiresAt", expiresAt);
+        ctx.setVariable("requestExpiresAtUtc", expiresAt);
+        ctx.setVariable("deviceName", deviceName);
+        ctx.setVariable("deviceOnline", deviceOnline);
+        ctx.setVariable("deviceOffline", !deviceOnline);
+        ctx.setVariable("projectUrl", frontendUrl + "/app");
+
+        String html = templateEngine.process("email/biolock-access-request", ctx);
+        String plain = "Hello " + safeLeaderName + ",\n\n"
+                + safeRequester + " (" + requesterEmail + ") has requested access to restricted document \""
+                + documentName + "\" in project \"" + projectName + "\".\n\n"
+                + (taskTitle != null && !taskTitle.isBlank() ? "Task: " + taskTitle + "\n" : "")
+                + "Requested at: " + requestedAt + "\n"
+                + "Expires at: " + expiresAt + "\n"
+                + "Target Device: " + (deviceName != null ? deviceName : "Default Device")
+                + (deviceOnline ? " (Online)" : " (OFFLINE)") + "\n\n"
+                + "To approve or deny, press your enrolled finger on the device. "
+                + "No link in this email can approve the request.\n\n"
+                + "— The Taskoura Team";
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
+        if (fromName != null && !fromName.isBlank()) {
+            helper.setFrom(new InternetAddress(fromAddress, fromName));
+        } else {
+            helper.setFrom(fromAddress);
+        }
+        helper.setTo(leader.getEmail());
+        helper.setSubject("Taskoura BioLock: Access requested by " + safeRequester + " for " + documentName);
+        helper.setText(plain, html);
+
+        mailSender.send(message);
+    }
+
+    public boolean isBioLockAccessEmailEnabled(UUID leaderId) {
+        return isPrefEnabled(leaderId, UserProfile::isPrefDocumentAccessRequests, true);
+    }
+
     @Async("emailTaskExecutor")
     public void sendDeadlineReminderEmail(User recipient, String taskTitle, String projectName,
                                           UUID projectId, UUID taskId, LocalDate deadline) {

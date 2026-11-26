@@ -98,6 +98,26 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
+    public SecurityFilterChain deviceSecurityFilterChain(
+            HttpSecurity http,
+            @Autowired(required = false) com.taskoura.security.biolock.DeviceAuthFilter deviceAuthFilter
+    ) throws Exception {
+        http
+            .securityMatcher("/api/device/biolock/**")
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(AbstractHttpConfigurer::disable)
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+
+        if (deviceAuthFilter != null) {
+            http.addFilterBefore(deviceAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain oauthSecurityFilterChain(
             HttpSecurity http,
             @Autowired(required = false) ClientRegistrationRepository clientRegistrationRepository,
@@ -169,13 +189,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(2)
+    @Order(3)
     public SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC).permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/error",

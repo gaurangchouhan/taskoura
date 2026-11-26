@@ -58,5 +58,12 @@ export const queryKeys = {
     list: (unreadOnly?: boolean) => ['notifications', 'list', unreadOnly] as const,
     unreadCount: () => ['notifications', 'unreadCount'] as const,
   },
+  biolock: {
+    all: ['biolock'] as const,
+    status: () => ['biolock', 'status'] as const,
+    enrollment: (jobId: string) => ['biolock', 'enrollment', jobId] as const,
+    projectSetting: (projectId: string) => ['biolock', 'projectSetting', projectId] as const,
+    documentAccess: (attachmentId: string) => ['biolock', 'documentAccess', attachmentId] as const,
+  },
   oauthProviders: ['oauth', 'providers'] as const,
 } as const;

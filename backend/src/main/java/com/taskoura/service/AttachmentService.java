@@ -43,17 +43,23 @@ public class AttachmentService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final AttachmentStorageService attachmentStorageService;
+    private final BioLockAccessService bioLockAccessService;
+    private final com.taskoura.repository.DocumentAccessRequestRepository documentAccessRequestRepository;
 
     public AttachmentService(AttachmentRepository attachmentRepository,
                              TaskRepository taskRepository,
                              UserRepository userRepository,
                              ProjectMemberRepository projectMemberRepository,
-                             AttachmentStorageService attachmentStorageService) {
+                             AttachmentStorageService attachmentStorageService,
+                             BioLockAccessService bioLockAccessService,
+                             com.taskoura.repository.DocumentAccessRequestRepository documentAccessRequestRepository) {
         this.attachmentRepository = attachmentRepository;
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.attachmentStorageService = attachmentStorageService;
+        this.bioLockAccessService = bioLockAccessService;
+        this.documentAccessRequestRepository = documentAccessRequestRepository;
     }
 
     public AttachmentResponse addAttachment(UUID taskId, MultipartFile file, String uploaderEmail) {
@@ -90,17 +96,25 @@ public class AttachmentService {
                 .build();
 
         Attachment saved = attachmentRepository.save(attachment);
-        return toResponse(saved);
+        return toResponse(saved, uploader);
     }
 
     public List<AttachmentResponse> getAttachments(UUID taskId) {
+        return getAttachments(taskId, null);
+    }
+
+    public List<AttachmentResponse> getAttachments(UUID taskId, String callerEmail) {
         if (!taskRepository.existsById(taskId)) {
             throw new NotFoundException("Task not found");
         }
 
+        User caller = (callerEmail != null && !callerEmail.isBlank())
+                ? userRepository.findByEmail(callerEmail).orElse(null)
+                : null;
+
         return attachmentRepository.findByTaskIdOrderByUploadedAtAsc(taskId)
                 .stream()
-                .map(this::toResponse)
+                .map(att -> toResponse(att, caller))
                 .toList();
     }
 
@@ -123,7 +137,99 @@ public class AttachmentService {
             throw new ForbiddenException("Only the uploader or project owner can delete this attachment");
         }
 
+        if (attachment.isRestricted()) {
+            documentAccessRequestRepository.revokeOpenRequestsForAttachment(attachment.getId());
+        }
+
         attachmentRepository.delete(attachment);
+    }
+
+    public AttachmentResponse restrictAttachment(UUID attachmentId, boolean restricted, String callerEmail) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new NotFoundException("Attachment not found"));
+
+        User caller = userRepository.findByEmail(callerEmail)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        Project project = attachment.getTask().getProject();
+        boolean isProjectOwner = (project.getOwner() != null && project.getOwner().getId().equals(caller.getId())) ||
+                projectMemberRepository.findByProjectIdAndUserId(project.getId(), caller.getId())
+                        .map(pm -> "Owner".equalsIgnoreCase(pm.getRole()))
+                        .orElse(false);
+
+        if (!isProjectOwner) {
+            throw new ForbiddenException("FORBIDDEN", "Only the project owner can change document restriction");
+        }
+
+        if (restricted && !attachment.isRestricted()) {
+            String newUrl = attachmentStorageService.moveToAuthenticatedDelivery(attachment.getFileUrl());
+            attachment.setRestricted(true);
+            if (newUrl != null && !newUrl.isBlank()) {
+                attachment.setFileUrl(newUrl);
+            }
+            attachment = attachmentRepository.save(attachment);
+        } else if (!restricted && attachment.isRestricted()) {
+            documentAccessRequestRepository.revokeOpenRequestsForAttachment(attachment.getId());
+            String newUrl = attachmentStorageService.moveToPublicDelivery(attachment.getFileUrl());
+            attachment.setRestricted(false);
+            if (newUrl != null && !newUrl.isBlank()) {
+                attachment.setFileUrl(newUrl);
+            }
+            attachment = attachmentRepository.save(attachment);
+        }
+
+        return toResponse(attachment, caller);
+    }
+
+    public java.io.InputStream getAttachmentInputStream(UUID attachmentId, String callerEmail) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new NotFoundException("Attachment not found"));
+
+        User caller = userRepository.findByEmail(callerEmail)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        Project project = attachment.getTask().getProject();
+        boolean isMember = (project.getOwner() != null && project.getOwner().getId().equals(caller.getId())) ||
+                projectMemberRepository.findByProjectIdAndUserId(project.getId(), caller.getId()).isPresent();
+
+        if (!isMember) {
+            throw new ForbiddenException("FORBIDDEN", "Not a project member");
+        }
+
+        if (attachment.isRestricted()) {
+            if (!bioLockAccessService.hasAccess(attachment.getId(), caller)) {
+                throw new ForbiddenException("BIOLOCK_ACCESS_REQUIRED", "Biometric authorization required to access this document");
+            }
+        }
+
+        return attachmentStorageService.downloadFileStream(attachment.getFileUrl());
+    }
+
+    public byte[] getAttachmentBytes(UUID attachmentId) {
+        return getAttachmentBytes(attachmentId, null);
+    }
+
+    public byte[] getAttachmentBytes(UUID attachmentId, String callerEmail) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new NotFoundException("Attachment not found"));
+
+        if (callerEmail != null && !callerEmail.isBlank()) {
+            User caller = userRepository.findByEmail(callerEmail).orElse(null);
+            Project project = attachment.getTask().getProject();
+            boolean isMember = caller != null && ((project.getOwner() != null && project.getOwner().getId().equals(caller.getId())) ||
+                    projectMemberRepository.findByProjectIdAndUserId(project.getId(), caller.getId()).isPresent());
+            if (!isMember) {
+                throw new ForbiddenException("FORBIDDEN", "Not a project member");
+            }
+
+            if (attachment.isRestricted() && !bioLockAccessService.hasAccess(attachment.getId(), caller)) {
+                throw new ForbiddenException("BIOLOCK_ACCESS_REQUIRED", "Biometric authorization required to access this document");
+            }
+        } else if (attachment.isRestricted()) {
+            throw new ForbiddenException("BIOLOCK_ACCESS_REQUIRED", "Biometric authorization required to access this document");
+        }
+
+        return attachmentStorageService.downloadFile(attachment.getFileUrl());
     }
 
     private void validateFileType(String filename, String contentType) {
@@ -150,27 +256,37 @@ public class AttachmentService {
         }
     }
 
-    public byte[] getAttachmentBytes(UUID attachmentId) {
-        Attachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new NotFoundException("Attachment not found"));
-        return attachmentStorageService.downloadFile(attachment.getFileUrl());
-    }
-
     public Attachment getAttachmentEntity(UUID attachmentId) {
         return attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new NotFoundException("Attachment not found"));
     }
 
     private AttachmentResponse toResponse(Attachment attachment) {
+        return toResponse(attachment, null);
+    }
+
+    private AttachmentResponse toResponse(Attachment attachment, User caller) {
+        boolean restricted = attachment.isRestricted();
+        boolean locked = false;
+        String publicFileUrl = attachment.getFileUrl();
+
+        if (restricted) {
+            boolean hasAccess = bioLockAccessService.hasAccess(attachment.getId(), caller);
+            locked = !hasAccess;
+            publicFileUrl = null; // Do not leak direct permanent public URL for restricted files
+        }
+
         return new AttachmentResponse(
                 attachment.getId(),
                 attachment.getTask().getId(),
                 attachment.getUploadedBy().getId(),
                 attachment.getUploadedBy().getName(),
-                attachment.getFileUrl(),
+                publicFileUrl,
                 attachment.getFileType(),
                 attachment.getFileName(),
-                attachment.getUploadedAt()
+                attachment.getUploadedAt(),
+                restricted,
+                locked
         );
     }
 }

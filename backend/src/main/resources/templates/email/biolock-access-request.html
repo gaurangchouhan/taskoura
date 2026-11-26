@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Access Request — Taskoura BioLock</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #f8fafc; padding: 32px 16px; }
+    .container { max-width: 580px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .header { padding: 28px 32px 20px; border-bottom: 1px solid #f1f5f9; }
+    .brand { font-size: 22px; font-weight: 700; color: #0f172a; text-decoration: none; letter-spacing: -0.5px; }
+    .brand span { color: #0284c7; }
+    .body-content { padding: 32px; }
+    h1 { font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 16px; }
+    p { font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 20px; }
+    .card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0; }
+    .card-row { margin-bottom: 10px; font-size: 14px; color: #334155; }
+    .card-row:last-child { margin-bottom: 0; }
+    .card-label { font-weight: 600; color: #64748b; display: inline-block; width: 130px; }
+    .biolock-instruction { background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 20px 0; color: #166534; font-size: 14px; font-weight: 500; }
+    .offline-warning { background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin: 20px 0; color: #92400e; font-size: 14px; }
+    .btn-container { text-align: center; margin: 32px 0 20px; }
+    .btn { display: inline-block; background-color: #0284c7; color: #ffffff !important; font-size: 15px; font-weight: 600; text-decoration: none; padding: 13px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25); }
+    .footer { padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="container" role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td class="header">
+          <a th:href="${frontendUrl}" class="brand">Task<span>oura</span> BioLock</a>
+        </td>
+      </tr>
+      <tr>
+        <td class="body-content">
+          <h1>Document Access Request</h1>
+          <p>Hello <strong th:text="${recipientName}">Leader</strong>,</p>
+          <p><strong th:text="${requesterName}">A team member</strong> has requested access to a restricted document:</p>
+          
+          <div class="card">
+            <div class="card-row"><span class="card-label">Requester:</span> <strong th:text="${requesterName}">Jane Doe</strong></div>
+            <div class="card-row"><span class="card-label">Project:</span> <strong th:text="${projectName}">Project Alpha</strong></div>
+            <div class="card-row"><span class="card-label">Document:</span> <span th:text="${fileName}">specification.pdf</span></div>
+            <div class="card-row" th:if="${taskTitle != null && !taskTitle.isEmpty()}"><span class="card-label">Task:</span> <span th:text="${taskTitle}">Task Title</span></div>
+            <div class="card-row"><span class="card-label">Request Time:</span> <span th:text="${requestTimeUtc}">2026-11-26 14:40:00 UTC</span></div>
+            <div class="card-row"><span class="card-label">Expires At:</span> <span th:text="${requestExpiresAtUtc}">2026-11-26 14:42:00 UTC</span></div>
+          </div>
+
+          <div class="biolock-instruction">
+            To approve or deny, press your enrolled finger on the device. No link in this email can approve the request.
+          </div>
+
+          <div class="offline-warning" th:if="${deviceOffline}">
+            <strong>Device Offline:</strong> Your BioLock device appears to be currently offline. Please plug it in or connect it to WiFi to process this request.
+          </div>
+
+          <div class="btn-container">
+            <a th:href="${projectUrl}" class="btn">View Project in Taskoura</a>
+          </div>
+
+          <p style="font-size: 13px; color: #64748b;">
+            This email does not grant access and contains no sensitive document contents or biometric keys.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          &copy; <span th:text="${currentYear}">2026</span> Taskoura. All rights reserved.<br>
+          You received this email because you are the leader of a BioLock-protected project.
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

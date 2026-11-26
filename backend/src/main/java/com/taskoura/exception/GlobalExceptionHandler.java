@@ -48,8 +48,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<Map<String, Object>> handleBadRequest(BadRequestException e, HttpServletRequest request) {
+        String code = e.getCode() != null ? e.getCode() : "VALIDATION_FAILED";
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(buildBody(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED", e.getMessage(), request, null));
+                .body(buildBody(HttpStatus.BAD_REQUEST, code, e.getMessage(), request, null));
     }
 
     @ExceptionHandler(OtpAttemptsExceededException.class)
@@ -60,9 +61,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RateLimitedException.class)
     public ResponseEntity<Map<String, Object>> handleRateLimited(RateLimitedException e, HttpServletRequest request) {
-        Map<String, Object> body = buildBody(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", e.getMessage(), request, null);
+        String code = e.getCode() != null ? e.getCode() : "RATE_LIMITED";
+        Map<String, Object> body = buildBody(HttpStatus.TOO_MANY_REQUESTS, code, e.getMessage(), request, null);
         body.put("retryAfterSeconds", e.getRetryAfterSeconds());
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfterSeconds()))
+                .body(body);
     }
 
     @ExceptionHandler(EmailDeliveryException.class)
@@ -85,8 +89,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException e, HttpServletRequest request) {
+        String code = e.getCode() != null ? e.getCode() : "FORBIDDEN";
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(buildBody(HttpStatus.FORBIDDEN, "FORBIDDEN", e.getMessage(), request, null));
+                .body(buildBody(HttpStatus.FORBIDDEN, code, e.getMessage(), request, null));
     }
 
     @ExceptionHandler(NotFoundException.class)
@@ -98,8 +103,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<Map<String, Object>> handleConflict(ConflictException e, HttpServletRequest request) {
         String code = e.getCode() != null ? e.getCode() : "CONFLICT";
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(buildBody(HttpStatus.CONFLICT, code, e.getMessage(), request, null));
+        Map<String, Object> body = buildBody(HttpStatus.CONFLICT, code, e.getMessage(), request, null);
+        if (e.getDetails() != null && !e.getDetails().isEmpty()) {
+            body.putAll(e.getDetails());
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler(BadGatewayException.class)

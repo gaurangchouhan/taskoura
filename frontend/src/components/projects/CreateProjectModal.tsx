@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { X, AlertTriangle, Layers, Calendar, Code2, Server, Database, CheckCircle2 } from 'lucide-react';
+import { X, AlertTriangle, Layers, Calendar, Code2, Server, Database, CheckCircle2, Fingerprint, Loader2 } from 'lucide-react';
 import { useCreateProject } from '../../hooks/useProjects';
+import { useBiolockStatus, useEnrollment } from '../../hooks/useBiolock';
+import { biolockService } from '../../services/biolockService';
 import { Project } from '../../types/project';
 
 interface CreateProjectModalProps {
@@ -18,6 +20,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 }) => {
   const navigate = useNavigate();
   const { mutateAsync: createProject, isPending } = useCreateProject();
+  const { data: biolockStatus } = useBiolockStatus();
+  const {
+    step: enrollmentStep,
+    errorReason: enrollmentError,
+    startEnrollment,
+    isEnrolling,
+  } = useEnrollment();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -27,6 +36,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [testingStack, setTestingStack] = useState('');
   const [deadline, setDeadline] = useState('');
   const [nameError, setNameError] = useState('');
+  const [biolockEnabled, setBiolockEnabled] = useState(false);
+
+  // If enrollment fails, do not silently enable it
+  useEffect(() => {
+    if (enrollmentStep === 'FAILED') {
+      setBiolockEnabled(false);
+    }
+  }, [enrollmentStep]);
 
   if (!isOpen) return null;
 
@@ -65,6 +82,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
         testingStack: testingStack.trim() || undefined,
         deadline: deadline || undefined,
       });
+
+      if (biolockEnabled && biolockStatus?.enabled) {
+        try {
+          await biolockService.updateProjectBiometricSetting(created.id, true);
+        } catch (bioErr) {
+          console.warn('Failed to enable BioLock setting on project', bioErr);
+        }
+      }
 
       toast.success('Project created successfully');
       setName('');
@@ -269,6 +294,91 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Fingerprint Security Section (Only shown when BioLock feature is enabled) */}
+          {biolockStatus?.enabled && (
+            <div
+              data-testid="fingerprint-security-section"
+              className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <Fingerprint className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-slate-800 block">Fingerprint Security</span>
+                    <span className="text-xs text-slate-500 block">
+                      Require biometric verification to approve access to restricted project documents
+                    </span>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    data-testid="biolock-toggle"
+                    checked={biolockEnabled}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      if (checked && !biolockStatus.credential) {
+                        if (!biolockStatus.device) {
+                          toast.error('A BioLock hardware device is required. Please register one in Profile Security settings.');
+                          return;
+                        }
+                      }
+                      setBiolockEnabled(checked);
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                </label>
+              </div>
+
+              {biolockEnabled && (
+                <div className="pt-2 border-t border-slate-200/60 text-xs">
+                  {biolockStatus.credential && biolockStatus.credential.status === 'ACTIVE' ? (
+                    <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl font-medium">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                      <span>Fingerprint already registered. It will be reused for this project.</span>
+                    </div>
+                  ) : !biolockStatus.device ? (
+                    <div className="text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-xl flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                      <span>BioLock device required before you can enable fingerprint security.</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-slate-600">
+                        No fingerprint is registered yet. Please enroll your fingerprint to enable security.
+                      </p>
+                      {enrollmentStep === 'IDLE' && (
+                        <button
+                          type="button"
+                          onClick={startEnrollment}
+                          className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
+                        >
+                          <Fingerprint className="w-3.5 h-3.5" />
+                          Enroll my fingerprint
+                        </button>
+                      )}
+                      {isEnrolling && (
+                        <div className="p-3 bg-sky-50 border border-sky-200 text-sky-800 rounded-xl flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
+                          <span>Place your finger on the device twice...</span>
+                        </div>
+                      )}
+                      {enrollmentStep === 'FAILED' && (
+                        <div className="text-rose-700 bg-rose-50 border border-rose-200 p-2 rounded-xl">
+                          {enrollmentError || 'Enrollment failed. BioLock disabled.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           </div>
 

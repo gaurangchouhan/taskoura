@@ -28,15 +28,18 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final TaskRepository taskRepository;
+    private final BioLockDeviceService bioLockDeviceService;
 
     public ProjectService(ProjectRepository projectRepository,
                           UserRepository userRepository,
                           ProjectMemberRepository projectMemberRepository,
-                          TaskRepository taskRepository) {
+                          TaskRepository taskRepository,
+                          BioLockDeviceService bioLockDeviceService) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.projectMemberRepository = projectMemberRepository;
         this.taskRepository = taskRepository;
+        this.bioLockDeviceService = bioLockDeviceService;
     }
 
     public ProjectResponse createProject(String ownerEmail, CreateProjectRequest request) {
@@ -124,6 +127,9 @@ public class ProjectService {
         }
 
         LocalDateTime now = LocalDateTime.now();
+
+        // 0. Clean up any BioLock protection hooks and check dangling credentials
+        bioLockDeviceService.handleProjectDeletion(projectId);
 
         // 1. Soft-delete all its tasks (including subtasks) with a bulk update
         taskRepository.softDeleteAllByProjectId(projectId, user, now);

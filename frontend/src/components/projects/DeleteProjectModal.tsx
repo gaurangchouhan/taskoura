@@ -92,7 +92,10 @@ export const DeleteProjectModal: React.FC<DeleteProjectModalProps> = ({
           <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
           <div className="text-xs sm:text-sm leading-relaxed text-rose-950">
             <span className="font-semibold block mb-1">Warning: Deletion is permanent</span>
-            Tasks, comments, bugs, attachments and activity for this project will be removed from Taskoura.
+            <p>Tasks, comments, bugs, attachments and activity for this project will be removed from Taskoura.</p>
+            <p className="mt-2 text-rose-900 font-medium">
+              This project's fingerprint protection will be removed and the fingerprint stays for the leader's other projects.
+            </p>
           </div>
         </div>
 

@@ -7,10 +7,14 @@
 [![Vite](https://img.shields.io/badge/Vite-6.1-646cff.svg)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4-38b2ac.svg)](https://tailwindcss.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
-[![Vitest](https://img.shields.io/badge/Vitest-315%20Passed-success.svg)](frontend/src/test)
-[![JUnit5](https://img.shields.io/badge/JUnit5-Backend%20Tests-success.svg)](backend/src/test)
+[![Vitest](https://img.shields.io/badge/Vitest-371%20Passed-success.svg)](frontend/src/test)
+[![JUnit5](https://img.shields.io/badge/JUnit5-61%20BioLock%20Tests%20Passed-success.svg)](backend/src/test)
 
-A modern, enterprise-grade project management, team collaboration, and quality assurance platform. Taskoura unifies industry-standard Agile workflows—interactive Kanban boards, hierarchical subtasks, role-based team management, QA test case execution, Cloudinary file attachments, and real-time analytical dashboards—with ultra-fast AI-assisted sprint planning powered by the Groq LPU inference engine.
+A modern, enterprise-grade project management, team collaboration, and quality assurance platform. Taskoura unifies industry-standard Agile workflows—interactive Kanban boards, hierarchical subtasks, role-based team management, QA test case execution, Cloudinary file attachments, and real-time analytical dashboards—with ultra-fast AI-assisted sprint planning powered by the Groq LPU inference engine, and biometric hardware document protection via Taskoura BioLock.
+
+<p align="center">
+  <img src="docs/images/kanban-board.png" alt="Taskoura Sprint Kanban Board" width="100%" style="border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.12);" />
+</p>
 
 ---
 
@@ -29,6 +33,10 @@ A modern, enterprise-grade project management, team collaboration, and quality a
   - [3. Tasks, Subtasks & Kanban](#3-tasks-subtasks--kanban)
   - [4. Quality Assurance — Bugs & Test Cases](#4-quality-assurance--bugs--test-cases)
   - [5. Attachments, Calendar, Templates & Analytics](#5-attachments-calendar-templates--analytics)
+  - [6. Taskoura BioLock (Biometrics & Device Auth)](#6-taskoura-biolock-biometrics--device-auth)
+- [Taskoura BioLock Architecture & Hardware](#taskoura-biolock-architecture--hardware)
+  - [ESP32-S2 & R307S Pinout](#esp32-s2--r307s-pinout)
+  - [Firmware & Hardware Simulator](#firmware--hardware-simulator)
 - [Environment Configuration](#environment-configuration)
   - [Backend Environment Variables](#backend-environment-variables)
   - [Frontend Environment Variables](#frontend-environment-variables)
@@ -102,11 +110,20 @@ Taskoura is architected with a decoupled, high-performance client-server model:
   - Status distribution donuts.
   - Per-member workload and task completion bars.
   - Critical upcoming deadline monitor with date countdowns.
+
+<p align="center">
+  <img src="docs/images/analytics-dashboard.png" alt="Taskoura Analytics Dashboard" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);" />
+</p>
+
 - **Team Management & Role-Based Access Control**: Member invitations by email, role assignments (`Owner`, `Admin`, `Member`, `Viewer`), and permission-gated controls.
 - **Task Discussions with @Mentions**: Contextual comment threads on every task card featuring live `@user` popover search and instant notifications for tagged team members.
 - **Multi-File Cloud Attachments**: Direct drag-and-drop file uploads to Cloudinary with file previews, size validation, and download capabilities.
 - **Session Security & Tab Synchronization**: Inactivity tracking with countdown warning modals and cross-tab synchronization via `BroadcastChannel` (logging out in one tab logs out all open tabs).
 - **Cinematic Landing Page**: Smooth scroll-driven animation sequence powered by GSAP and dynamic blur dissolves.
+
+<p align="center">
+  <img src="docs/images/landing-page.png" alt="Taskoura Cinematic Landing Page" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);" />
+</p>
 
 ### Backend & Core Modules
 
@@ -126,6 +143,7 @@ Taskoura is architected with a decoupled, high-performance client-server model:
 14. **Parent/Child Subtask Hierarchies (Module 14)**: Nested subtasks with parent completion percentage rollups and single-nesting safety guards.
 15. **In-Comment @Mentions & Deadline Alerts (Module 15)**: Dynamic mention extraction triggering alerts, paired with scheduled deadline reminder jobs.
 16. **User Profile & Anti-Enumeration Password Reset (Module 16)**: Authenticated user profiles (skills, bio, title, timezone) and secure password recovery via reset OTPs.
+17. **Taskoura BioLock Biometric Access (Module 17)**: ESP32-S2 + R307S optical fingerprint integration, device HMAC-SHA256 protocol, queue-based access requests, and authenticated file byte streaming.
 
 ---
 
@@ -143,16 +161,17 @@ Taskoura is architected with a decoupled, high-performance client-server model:
 | **Charts & Metrics** | Recharts | 3.10 | Responsive SVG analytical charts and rings |
 | **Animations** | GSAP | 3.12 | Cinematic scroll-driven hero sequence |
 | **Icons** | Lucide React | 0.475 | Vector icon set |
-| **Frontend Testing** | Vitest + Testing Library | 5.0 / 16.3 | 28 test suites, 315 component and integration tests |
+| **Frontend Testing** | Vitest + Testing Library | 5.0 / 16.3 | 32 test suites, 371 component and integration tests |
 | **Backend Framework** | Spring Boot | 3.4.1 | Java REST API enterprise framework |
 | **Language (Backend)** | Java | 21 (LTS) | Modern language features (Records, Pattern Matching) |
-| **Security** | Spring Security + JJWT | 6.2 / 0.12 | Stateless JWT filter and BCrypt encryption |
+| **Security** | Spring Security + JJWT | 6.4 / 0.12 | Stateless JWT filter, custom DeviceAuthFilter, BCrypt |
+| **Biometric Hardware** | ESP32-S2 + R307S | MicroPython | Optical fingerprint scanner, HMAC-SHA256 request signing |
 | **Database** | PostgreSQL | 16 | Relational database with relational integrity |
 | **ORM / Data Access** | Spring Data JPA / Hibernate | 6.6 | Schema synchronization, JPQL queries, transactions |
 | **Email Engine** | Spring Mail + Thymeleaf | 3.4.1 | Multipart HTML/plain-text templated emails |
-| **Cloud Storage** | Cloudinary Java SDK | 1.39 | Cloud-native asset storage and CDN delivery |
+| **Cloud Storage** | Cloudinary Java SDK | 1.39 | Cloud-native asset storage and authenticated streaming |
 | **AI Inference** | Groq Cloud API | REST | Ultra-low latency LPU model inference |
-| **Backend Testing** | JUnit 5 + Mockito + GreenMail | 5.x | Unit, slice, and integration test coverage |
+| **Backend Testing** | JUnit 5 + Mockito + GreenMail | 5.x | 61 BioLock tests & full suite coverage |
 | **Containerization** | Docker | Alpine JRE 21 | Containerized runtime environment |
 
 ---
@@ -220,9 +239,19 @@ taskoura/
 │       ├── pages/                      # Application views (Dashboard, ProjectBoard, Quality, etc.)
 │       ├── routes/                     # ProtectedRoute and PublicOnlyRoute guards
 │       ├── services/                   # Modular Axios API service integrations
-│       ├── test/                       # 28 Vitest test suites (315 tests passing)
+│       ├── test/                       # 32 Vitest test suites (371 tests passing)
 │       └── types/                      # TypeScript interfaces and domain types
-└── docs/                               # System diagrams, specifications, and architecture notes
+├── firmware/                           # MicroPython ESP32-S2 + R307S biometric client
+│   ├── config.py                       # UART and hardware pin assignments
+│   ├── fingerprint.py                  # R307S optical sensor framing & driver
+│   ├── enroll.py                       # Two-touch fingerprint enrollment
+│   ├── verify.py                       # Template matching & LED indicator
+│   └── device_client.py                # HMAC-SHA256 signing, polling loop, recovery
+├── tools/                              # Developer & QA tooling
+│   └── biolock_device_simulator.py     # CPython ESP32-S2 hardware simulator
+└── docs/                               # System diagrams, specifications, images, and notes
+    ├── images/                         # Platform screenshots, diagrams, and architecture images
+    └── biolock/                        # BioLock audit, contract, and acceptance reports
 ```
 
 ---
@@ -230,6 +259,10 @@ taskoura/
 ## Database Schema (PostgreSQL)
 
 Taskoura runs on a normalized, production-grade schema:
+
+<p align="center">
+  <img src="docs/images/database-er-diagram.jpg" alt="Taskoura Database Entity Relationship Diagram" width="100%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);" />
+</p>
 
 ```
   ┌──────────────┐       1:N       ┌──────────────┐
@@ -359,6 +392,82 @@ All protected endpoints require an `Authorization: Bearer <JWT>` header. Standar
 | `PATCH` | `/api/notifications/{id}/read` | Mark notification as read | Yes |
 | `GET` | `/api/projects/{projectId}/activity` | Project audit event activity feed | Yes |
 
+### 6. Taskoura BioLock (Biometrics & Device Auth)
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/api/biolock/status` | Global BioLock feature status & configuration | Optional |
+| `GET` | `/api/biolock/devices` | Leader's registered BioLock device | Yes (JWT) |
+| `POST` | `/api/biolock/devices` | Register device (returns one-time `deviceKey`) | Yes (JWT) |
+| `POST` | `/api/biolock/devices/rotate` | Rotate device key (increments `keyVersion`) | Yes (JWT) |
+| `DELETE` | `/api/biolock/devices/{id}` | Revoke device | Yes (JWT) |
+| `POST` | `/api/biolock/enrollment` | Start fingerprint enrollment job | Yes (JWT) |
+| `GET` | `/api/biolock/enrollment/{jobId}` | Poll fingerprint enrollment outcome | Yes (JWT) |
+| `GET` | `/api/projects/{projectId}/biolock` | Project biometric security status & credential | Yes (JWT) |
+| `PUT` | `/api/attachments/{id}/restricted` | Toggle restricted flag on document (Owner) | Yes (JWT) |
+| `POST` | `/api/attachments/{id}/access-request` | Request biometric document access | Yes (JWT) |
+| `GET` | `/api/attachments/{id}/access` | Poll access approval state & lease TTL | Yes (JWT) |
+| `GET` | `/api/attachments/{id}/content` | Stream authorized file bytes (`nosniff`, `no-store`) | Yes (JWT) |
+| `GET` | `/api/device/biolock/jobs/next` | Poll next queued job for device (SKIP LOCKED) | Device HMAC |
+| `POST` | `/api/device/biolock/jobs/{id}/result`| Submit signed proof & biometric outcome | Device HMAC |
+
+---
+
+## Taskoura BioLock Architecture & Hardware
+
+Taskoura BioLock adds biometric document authorization without transmitting raw fingerprints or images across the network. Optical templates stay strictly inside R307S sensor flash memory.
+
+<p align="center">
+  <img src="docs/images/biolock-roadmap.jpg" alt="Taskoura BioLock Architecture & Implementation Roadmap" width="85%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);" />
+</p>
+
+```
+┌─────────────────┐           ┌───────────────────┐           ┌───────────────────┐
+│ Team Member (UI)│           │ Taskoura Backend  │           │ ESP32-S2 + R307S  │
+└────────┬────────┘           └─────────┬─────────┘           └─────────┬─────────┘
+         │ 1. Request Document Access   │                               │
+         ├─────────────────────────────►│ 2. Create Job & Challenge     │
+         │                              │    Email Project Leader       │
+         │                              ├───────────────────────────────┤
+         │                              │                               │ 3. Poll Signed Job (HMAC)
+         │                              │◄──────────────────────────────┤    (GET /jobs/next)
+         │                              │ 4. Claimed Job & Challenge    │
+         │                              ├──────────────────────────────►│ 5. Slow-blink LED
+         │                              │                               │    Leader Touches Sensor
+         │                              │                               │    Template Matched in Flash
+         │                              │ 6. Submit HMAC Proof          │
+         │                              │◄──────────────────────────────┤    (POST /jobs/{id}/result)
+         │ 7. Access Approved (15 min)  │                               │
+         │◄─────────────────────────────┤                               │
+         │ 8. Stream Document Bytes     │                               │
+         ├─────────────────────────────►│ (GET /attachments/{id}/content)
+         │◄─────────────────────────────┤
+```
+
+### ESP32-S2 & R307S Pinout
+
+| ESP32-S2 Pin | Sensor / Component | Description |
+|---|---|---|
+| `GPIO 17` | R307S `TX` | UART1 Transmit (to Sensor RX, 57600 baud) |
+| `GPIO 18` | R307S `RX` | UART1 Receive (from Sensor TX, 57600 baud) |
+| `GPIO 15` | Status LED | Blinks during verification (`100ms ON / 900ms OFF`) |
+| `3.3V` / `GND` | Power & Ground | Clean DC supply |
+
+### Firmware & Hardware Simulator
+
+MicroPython driver scripts are located in `firmware/`. A cross-platform CLI simulator is available in `tools/biolock_device_simulator.py`:
+
+```bash
+# Run simulator unit and driver tests (13 tests)
+python3 firmware/tests/sim_test.py
+
+# Run simulator polling real backend with interactive outcome
+python3 tools/biolock_device_simulator.py \
+  --base-url http://localhost:8081 \
+  --device-id <DEVICE_ID> \
+  --device-key <DEVICE_KEY_HEX> \
+  --outcome MATCH --slot 1
+```
+
 ---
 
 ## Environment Configuration
@@ -387,6 +496,15 @@ Configure these in your deployment platform or locally in `backend/application-l
 | `MAIL_FROM` | Sender email address | `support@taskoura.dev` |
 | `MAIL_FROM_NAME` | Display name for outgoing mail | `Taskoura` |
 | `FRONTEND_URL` | Client URL for email activation links | `http://localhost:5173` |
+| `BIOLOCK_ENABLED` | Enable Taskoura BioLock biometric subsystem | `false` (default) |
+| `DEVICE_MASTER_KEY` | Base64 of 32 random bytes (required when enabled) | `base64_encoded_32_bytes...` |
+| `BIOLOCK_REQUEST_TTL_SECONDS` | Access request expiration window | `120` |
+| `BIOLOCK_ACCESS_TTL_MINUTES` | Approved access grant validity duration | `15` |
+| `BIOLOCK_JOB_LEASE_SECONDS` | Device job lease timeout before requeue | `60` |
+| `BIOLOCK_DEVICE_ONLINE_SECONDS`| Threshold to mark scanner online | `30` |
+| `BIOLOCK_MAX_REQUESTS_PER_DOC_PER_HOUR` | Per-user document request rate limit | `5` |
+| `BIOLOCK_EMAIL_ON_REQUEST` | Send email notification to leader on request | `true` |
+| `BIOLOCK_EMAIL_THROTTLE_MINUTES` | Throttle duplicate emails to leader | `5` |
 
 ### Frontend Environment Variables
 

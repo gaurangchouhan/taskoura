@@ -21,6 +21,30 @@ public interface AttachmentStorageService {
     byte[] downloadFile(String fileUrl);
 
     /**
+     * Downloads file content stream given the storage URL without buffering in memory.
+     *
+     * @param fileUrl the file URL
+     * @return input stream of the file content
+     */
+    default java.io.InputStream downloadFileStream(String fileUrl) {
+        return new java.io.ByteArrayInputStream(downloadFile(fileUrl));
+    }
+
+    /**
+     * Moves an asset to authenticated/restricted delivery mode.
+     */
+    default String moveToAuthenticatedDelivery(String fileUrl) {
+        return fileUrl;
+    }
+
+    /**
+     * Moves an asset to public delivery mode.
+     */
+    default String moveToPublicDelivery(String fileUrl) {
+        return fileUrl;
+    }
+
+    /**
      * Deletes a file from storage provider (best-effort).
      *
      * @param fileUrl the file URL

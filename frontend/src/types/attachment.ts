@@ -9,4 +9,6 @@ export interface Attachment {
   uploadedAt: string;
   fileSize?: number;
   size?: number;
+  restricted?: boolean;
+  locked?: boolean;
 }

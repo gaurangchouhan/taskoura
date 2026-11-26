@@ -1,0 +1,16 @@
+Hello [(${recipientName})],
+
+[(${requesterName})] has requested access to a restricted document in project "[(${projectName})]":
+
+Document: [(${fileName})]
+[# th:if="${taskTitle != null && !taskTitle.isEmpty()}"]Task: [(${taskTitle})][/]
+Request Time: [(${requestTimeUtc})]
+Expires At: [(${requestExpiresAtUtc})]
+
+To approve or deny, press your enrolled finger on the device. No link in this email can approve the request.
+[# th:if="${deviceOffline}"]
+Note: Your BioLock device appears to be currently offline. Please plug it in or connect it to WiFi to process this request.
+[/]
+View project: [(${projectUrl})]
+
+— The Taskoura Team

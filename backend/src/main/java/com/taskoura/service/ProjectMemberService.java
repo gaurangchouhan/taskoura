@@ -25,19 +25,22 @@ public class ProjectMemberService {
     private final NotificationService notificationService;
     private final com.taskoura.repository.UserProfileRepository userProfileRepository;
     private final EmailService emailService;
+    private final com.taskoura.repository.DocumentAccessRequestRepository documentAccessRequestRepository;
 
     public ProjectMemberService(ProjectMemberRepository projectMemberRepository,
                                 UserRepository userRepository,
                                 ProjectService projectService,
                                 NotificationService notificationService,
                                 @Autowired(required = false) com.taskoura.repository.UserProfileRepository userProfileRepository,
-                                @Autowired(required = false) EmailService emailService) {
+                                @Autowired(required = false) EmailService emailService,
+                                @Autowired(required = false) com.taskoura.repository.DocumentAccessRequestRepository documentAccessRequestRepository) {
         this.projectMemberRepository = projectMemberRepository;
         this.userRepository = userRepository;
         this.projectService = projectService;
         this.notificationService = notificationService;
         this.userProfileRepository = userProfileRepository;
         this.emailService = emailService;
+        this.documentAccessRequestRepository = documentAccessRequestRepository;
     }
 
     public ProjectMemberResponse inviteMember(UUID projectId, InviteMemberRequest request) {
@@ -97,6 +100,10 @@ public class ProjectMemberService {
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new NotFoundException("Membership not found"));
         projectMemberRepository.delete(member);
+
+        if (documentAccessRequestRepository != null) {
+            documentAccessRequestRepository.revokeOpenRequestsForProjectAndUser(projectId, userId);
+        }
     }
 
     private ProjectMemberResponse toResponse(ProjectMember member) {

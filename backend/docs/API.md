@@ -20,6 +20,8 @@
   - `GET /api/health`
   - `POST /api/auth/**`
   - `GET /api/attachments/{attachmentId}/download`
+  - `GET /api/biolock/status`
+  - `/api/device/biolock/**` (Uses custom hardware HMAC-SHA256 signature headers; JWT filter does not apply)
 - **Missing or Invalid Token:** Returns HTTP **401 Unauthorized** with error code `UNAUTHENTICATED`.
 - **Insufficient Permissions:** Returns HTTP **403 Forbidden** with error code `FORBIDDEN`.
 - **JWT Principal:** The authenticated user's email address.
@@ -131,7 +133,51 @@ For validation failures (HTTP 400), a `fieldErrors` map is included:
 
 ---
 
-## 6. Retention & Soft Deletion Policy
+## 6. Taskoura BioLock API Specification
+
+### 6.1 Hardware Device Authentication Protocol (`/api/device/biolock/**`)
+Endpoints under `/api/device/biolock/**` bypass JWT authentication and are protected by a standalone `DeviceAuthFilter`:
+
+- **Required Request Headers:**
+  - `X-Device-Id`: UUID string of the registered active scanner.
+  - `X-Timestamp`: Unix epoch timestamp in seconds (integer string). Must be within ±120 seconds of server clock (`java.time.Clock`).
+  - `X-Nonce`: 32-character hex string (16 cryptographically random bytes). Nonces are checked for deduplication in `device_nonces` and expire after 10 minutes.
+  - `X-Signature`: 64-character lowercase hex string computed as:
+    ```
+    hex(HMAC-SHA256(deviceKey, METHOD + "\n" + PATH + "\n" + TIMESTAMP + "\n" + NONCE + "\n" + SHA256hex(body)))
+    ```
+- **Error Behavior:** Any signature mismatch, invalid timestamp, reused nonce, inactive device, or missing header returns HTTP **401 Unauthorized** with an empty body and zero diagnostic details.
+- **Rate Limit:** Devices are limited to at most 1 poll per 2 seconds (`GET /api/device/biolock/jobs/next`). Rapid repeated requests return HTTP **429 Too Many Requests**.
+
+### 6.2 Hardware Device Endpoints
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/device/biolock/jobs/next` | Fetches and claims oldest queued job (`SELECT FOR UPDATE SKIP LOCKED`). Updates `lastSeenAt`. Returns 204 No Content when queue is empty. |
+| `POST` | `/api/device/biolock/jobs/{jobId}/result` | Submits signed biometric outcome (`ENROLLED`, `MATCH`, `WRONG_FINGER`, `TIMEOUT`, `NO_MATCH`, `FAILED`). Validates HMAC proof. Idempotent. |
+
+### 6.3 BioLock Management Endpoints (JWT Authenticated)
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `GET` | `/api/biolock/status` | Subsystem status (`enabled`, `accessTtlMinutes`, `requestTtlSeconds`, `maxRequestsPerHour`). | Public / Optional |
+| `GET` | `/api/biolock/devices` | Returns leader's active scanner, online badge, and last-seen timestamp. | Authenticated |
+| `POST` | `/api/biolock/devices` | Registers a scanner device. Returns `deviceId` and one-time hex `deviceKey`. | Authenticated |
+| `POST` | `/api/biolock/devices/rotate` | Rotates device key (increments `keyVersion` and returns new one-time key). | Authenticated |
+| `DELETE` | `/api/biolock/devices/{id}` | Revokes the scanner (`status = REVOKED`). | Authenticated |
+| `POST` | `/api/biolock/enrollment` | Creates an `ENROLL` job for leader's active online device. | Authenticated |
+| `GET` | `/api/biolock/enrollment/{jobId}` | Polls enrollment job status (`QUEUED`, `CLAIMED`, `COMPLETED`, `FAILED`). | Authenticated |
+| `GET` | `/api/projects/{projectId}/biolock` | Biometric protection status and linked credential info for project. | Project Member |
+
+### 6.4 Document Access & Streaming Endpoints
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `PUT` | `/api/attachments/{id}/restricted` | Toggles document `restricted` flag (`true`/`false`). Scrubbing direct public URL. | Project Owner |
+| `POST` | `/api/attachments/{id}/access-request` | Requests access to restricted file. Queues `VERIFY_ACCESS` job and emails leader. | Project Member |
+| `GET` | `/api/attachments/{id}/access` | Returns access state (`LOCKED`, `PENDING`, `APPROVED`, `DENIED`, `EXPIRED`, `CANCELLED`). | Project Member |
+| `GET` | `/api/attachments/{id}/content` | Streams decrypted/authenticated file bytes (`StreamingResponseBody`). Enforces `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. | Approved Member |
+
+---
+
+## 7. Retention & Soft Deletion Policy
 
 Taskoura enforces a non-destructive soft-deletion model for projects and tasks:
 
