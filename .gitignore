@@ -27,5 +27,10 @@ backend/src/main/resources/application-secret.properties
 *.iml
 /images/
 /src
+device_secrets.py
+*/device_secrets.py
+firmware/device_secrets.py
+__pycache__/
+*.pyc
 
 

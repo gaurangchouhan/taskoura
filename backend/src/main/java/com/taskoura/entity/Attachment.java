@@ -40,4 +40,8 @@ public class Attachment {
 
     @Builder.Default
     private LocalDateTime uploadedAt = LocalDateTime.now();
+
+    @Builder.Default
+    @Column(name = "restricted", nullable = false)
+    private boolean restricted = false;
 }

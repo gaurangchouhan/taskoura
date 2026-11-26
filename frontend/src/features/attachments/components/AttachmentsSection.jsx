@@ -73,6 +73,8 @@ export const AttachmentsSection = ({
             <AttachmentItem
               key={attachment.id}
               attachment={attachment}
+              taskId={taskId}
+              projectId={projectId}
               isProjectOwner={isOwner}
               isDeleting={isDeleting}
               onDelete={handleDelete}

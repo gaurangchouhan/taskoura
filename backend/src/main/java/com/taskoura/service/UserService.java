@@ -261,12 +261,14 @@ public class UserService {
             profile.setPrefMentions(request.notificationPrefs().mentions());
             profile.setPrefProjectInvites(request.notificationPrefs().projectInvites());
             profile.setPrefStatusChanges(request.notificationPrefs().statusChanges());
+            profile.setPrefDocumentAccessRequests(request.notificationPrefs().documentAccessRequests());
         } else {
             profile.setPrefTaskAssigned(true);
             profile.setPrefDeadlineReminders(true);
             profile.setPrefMentions(true);
             profile.setPrefProjectInvites(true);
             profile.setPrefStatusChanges(false);
+            profile.setPrefDocumentAccessRequests(true);
         }
 
         userProfileRepository.save(profile);
@@ -403,7 +405,8 @@ public class UserService {
                         profile.isPrefDeadlineReminders(),
                         profile.isPrefMentions(),
                         profile.isPrefProjectInvites(),
-                        profile.isPrefStatusChanges()
+                        profile.isPrefStatusChanges(),
+                        profile.isPrefDocumentAccessRequests()
                 )
         );
     }

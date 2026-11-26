@@ -143,6 +143,36 @@ public class CloudinaryAttachmentStorageService implements AttachmentStorageServ
     }
 
     @Override
+    public String moveToAuthenticatedDelivery(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return fileUrl;
+        try {
+            byte[] bytes = downloadFile(fileUrl);
+            Map<?, ?> res = cloudinary.uploader().upload(bytes, ObjectUtils.asMap("resource_type", "auto", "type", "authenticated"));
+            deleteFile(fileUrl);
+            Object url = res.get("secure_url") != null ? res.get("secure_url") : res.get("url");
+            return url != null ? url.toString() : fileUrl;
+        } catch (Exception e) {
+            log.warn("Failed to move asset to authenticated delivery: {}", e.getMessage());
+            return fileUrl;
+        }
+    }
+
+    @Override
+    public String moveToPublicDelivery(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) return fileUrl;
+        try {
+            byte[] bytes = downloadFile(fileUrl);
+            Map<?, ?> res = cloudinary.uploader().upload(bytes, ObjectUtils.asMap("resource_type", "auto", "type", "upload"));
+            deleteFile(fileUrl);
+            Object url = res.get("secure_url") != null ? res.get("secure_url") : res.get("url");
+            return url != null ? url.toString() : fileUrl;
+        } catch (Exception e) {
+            log.warn("Failed to move asset to public delivery: {}", e.getMessage());
+            return fileUrl;
+        }
+    }
+
+    @Override
     public void deleteFile(String fileUrl) {
         if (fileUrl == null || fileUrl.isBlank()) {
             return;

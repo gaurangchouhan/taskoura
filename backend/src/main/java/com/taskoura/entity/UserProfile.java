@@ -102,6 +102,10 @@ public class UserProfile implements Persistable<UUID> {
     @Builder.Default
     private boolean prefStatusChanges = false;
 
+    @Column(name = "pref_document_access_requests", nullable = false)
+    @Builder.Default
+    private boolean prefDocumentAccessRequests = true;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "user_profile_skills",

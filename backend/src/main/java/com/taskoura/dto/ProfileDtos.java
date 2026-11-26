@@ -12,10 +12,21 @@ public class ProfileDtos {
             boolean deadlineReminders,
             boolean mentions,
             boolean projectInvites,
-            boolean statusChanges
+            boolean statusChanges,
+            boolean documentAccessRequests
     ) {
+        public NotificationPrefsDto(
+                boolean taskAssigned,
+                boolean deadlineReminders,
+                boolean mentions,
+                boolean projectInvites,
+                boolean statusChanges
+        ) {
+            this(taskAssigned, deadlineReminders, mentions, projectInvites, statusChanges, true);
+        }
+
         public static NotificationPrefsDto defaults() {
-            return new NotificationPrefsDto(true, true, true, true, false);
+            return new NotificationPrefsDto(true, true, true, true, false, true);
         }
     }
 
