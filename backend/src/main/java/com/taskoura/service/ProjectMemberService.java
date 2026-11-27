@@ -70,6 +70,7 @@ public class ProjectMemberService {
                 .build();
 
         ProjectMember saved = projectMemberRepository.save(member);
+        projectMemberRepository.flush();
         ProjectMemberResponse response = toResponse(saved);
 
         // Schedule notification and email AFTER transaction commits (best-effort)
@@ -104,7 +105,7 @@ public class ProjectMemberService {
                 notifMsg = notifMsg.substring(0, 247) + "...";
             }
             notificationService.createNotification(user, notifMsg);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             log.error("Failed to record invite notification/activity log: {}", e.getMessage());
         }
 
@@ -116,7 +117,7 @@ public class ProjectMemberService {
                     inviterName = project.getOwner().getName().trim();
                 }
                 emailService.sendProjectInviteEmail(user, inviterName, project.getName(), project.getId(), role);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 log.error("Failed to deliver project invite email: {}", e.getMessage());
             }
         }

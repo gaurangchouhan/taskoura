@@ -126,7 +126,9 @@ public class ProjectAccessService {
             return null;
         }
 
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .or(() -> userRepository.findByEmail(email))
+                .orElse(null);
         if (user == null) {
             return null;
         }
