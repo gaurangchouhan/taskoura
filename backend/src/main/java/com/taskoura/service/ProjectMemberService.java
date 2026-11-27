@@ -46,7 +46,9 @@ public class ProjectMemberService {
     public ProjectMemberResponse inviteMember(UUID projectId, InviteMemberRequest request) {
         Project project = projectService.getProjectEntityOrThrow(projectId);
 
-        User user = userRepository.findByEmail(request.email())
+        String email = request.email() != null ? request.email().trim() : "";
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .or(() -> userRepository.findByEmail(email))
                 .orElseThrow(() -> new NotFoundException("User with this email not found"));
 
         if (projectMemberRepository.existsByProjectIdAndUserId(projectId, user.getId())) {
@@ -61,17 +63,34 @@ public class ProjectMemberService {
 
         ProjectMember saved = projectMemberRepository.save(member);
 
-        // Log MEMBER_INVITED activity
-        notificationService.logActivity(project, user,
-                "MEMBER_INVITED",
-                user.getName() + " was invited to project \"" + project.getName() + "\" as " + saved.getRole());
+        // Safe activity log & notification (non-blocking)
+        try {
+            String userName = user.getName() != null && !user.getName().isBlank() ? user.getName().trim() : user.getEmail();
+            String projName = project.getName() != null ? project.getName() : "Project";
+            String desc = userName + " was invited to project \"" + projName + "\" as " + saved.getRole();
+            if (desc.length() > 250) {
+                desc = desc.substring(0, 247) + "...";
+            }
+            notificationService.logActivity(project, user, "MEMBER_INVITED", desc);
 
-        notificationService.createNotification(user,
-                "You have been invited to project \"" + project.getName() + "\" as " + saved.getRole());
+            String notifMsg = "You have been invited to project \"" + projName + "\" as " + saved.getRole();
+            if (notifMsg.length() > 250) {
+                notifMsg = notifMsg.substring(0, 247) + "...";
+            }
+            notificationService.createNotification(user, notifMsg);
+        } catch (Exception e) {
+            // Log but don't fail member addition
+        }
 
         if (emailService != null) {
-            String inviterName = project.getOwner() != null ? project.getOwner().getName() : "Team Lead";
-            emailService.sendProjectInviteEmail(user, inviterName, project.getName(), project.getId(), saved.getRole());
+            try {
+                String inviterName = "Team Lead";
+                if (project.getOwner() != null && project.getOwner().getName() != null && !project.getOwner().getName().isBlank()) {
+                    inviterName = project.getOwner().getName().trim();
+                }
+                emailService.sendProjectInviteEmail(user, inviterName, project.getName(), project.getId(), saved.getRole());
+            } catch (Exception ignored) {
+            }
         }
 
         return toResponse(saved);

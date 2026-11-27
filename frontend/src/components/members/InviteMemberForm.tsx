@@ -58,8 +58,11 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
       } else if (status === 409 || rawMsg.toLowerCase().includes('already')) {
         setErrorMessage('This person is already on the team');
         toast.error('This person is already on the team');
+      } else if (status === 403 || rawMsg.toLowerCase().includes('owner') || rawMsg.toLowerCase().includes('forbidden')) {
+        setErrorMessage('Only the project owner can invite members');
+        toast.error('Only the project owner can invite members');
       } else {
-        const fallbackMsg = getErrorMessage(err);
+        const fallbackMsg = (rawMsg && rawMsg !== 'An unexpected error occurred') ? rawMsg : getErrorMessage(err);
         setErrorMessage(fallbackMsg);
         toast.error(fallbackMsg);
       }
