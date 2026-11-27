@@ -79,10 +79,30 @@ public class ProjectMemberService {
 
     public List<ProjectMemberResponse> getMembers(UUID projectId) {
         // Ensure project exists or throws NotFoundException
-        projectService.getProjectEntityOrThrow(projectId);
+        Project project = projectService.getProjectEntityOrThrow(projectId);
 
-        return projectMemberRepository.findByProjectId(projectId)
-                .stream()
+        List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+
+        // Auto-heal: Ensure project owner is recorded as a ProjectMember with role Owner
+        if (project.getOwner() != null) {
+            boolean ownerPresent = members.stream()
+                    .anyMatch(m -> m.getUser() != null && m.getUser().getId().equals(project.getOwner().getId()));
+            if (!ownerPresent) {
+                ProjectMember ownerMember = ProjectMember.builder()
+                        .project(project)
+                        .user(project.getOwner())
+                        .role("Owner")
+                        .build();
+                try {
+                    ownerMember = projectMemberRepository.save(ownerMember);
+                } catch (Exception ignored) {
+                }
+                members = new java.util.ArrayList<>(members);
+                members.add(0, ownerMember);
+            }
+        }
+
+        return members.stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -100,6 +120,7 @@ public class ProjectMemberService {
         ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new NotFoundException("Membership not found"));
         projectMemberRepository.delete(member);
+        projectMemberRepository.flush();
 
         if (documentAccessRequestRepository != null) {
             documentAccessRequestRepository.revokeOpenRequestsForProjectAndUser(projectId, userId);

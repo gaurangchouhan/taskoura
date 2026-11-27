@@ -53,7 +53,12 @@ export interface CurrentMembershipResult {
 
 export const useCurrentMembership = (projectId?: string): CurrentMembershipResult => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: members = [], isLoading, isError } = useMembers(projectId);
+
+  const projects = queryClient.getQueryData<import('../types/project').Project[]>(queryKeys.projects.list()) || [];
+  const project = projects.find((p) => p.id === projectId) ||
+                  queryClient.getQueryData<import('../types/project').Project>(queryKeys.projects.detail(projectId || ''));
 
   const membership = useMemo(() => {
     if (!user) return undefined;
@@ -64,18 +69,20 @@ export const useCurrentMembership = (projectId?: string): CurrentMembershipResul
     );
   }, [members, user]);
 
-  const isOwner = membership?.role === 'Owner';
+  const isOwner = membership
+    ? membership.role === 'Owner'
+    : (members.length === 0 && Boolean((user?.id && project?.ownerId === user?.id) || project?.role === 'Owner'));
 
   return {
     membership,
     isOwner,
-    role: membership?.role,
+    role: isOwner ? 'Owner' : membership?.role,
     isLoading,
     isError,
     id: membership?.id,
-    userId: membership?.userId,
-    userName: membership?.userName,
-    userEmail: membership?.userEmail,
+    userId: membership?.userId || user?.id,
+    userName: membership?.userName || user?.name,
+    userEmail: membership?.userEmail || user?.email,
   };
 };
 
