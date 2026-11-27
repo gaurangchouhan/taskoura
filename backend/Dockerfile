@@ -3,7 +3,15 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
+# Configure Maven Central mirror and HTTP retries to prevent 429 Too Many Requests in cloud builds
+ENV MAVEN_OPTS="-Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.http.retryHandler.requestSentEnabled=true -Dmaven.wagon.http.serviceUnavailableRetryHandler.count=5"
+
+COPY settings.xml /root/.m2/settings.xml
 COPY pom.xml .
+
+# Pre-fetch dependencies for Docker layer caching
+RUN mvn -B dependency:resolve || true
+
 COPY src ./src
 
 RUN mvn -B clean package -DskipTests
