@@ -1,0 +1,23 @@
+{
+  "description": "Taskoura BioLock Canonical Test Vector for Device HMAC-SHA256 Auth and Result Proofs",
+  "deviceId": "99999999-8888-7777-6666-555555555555",
+  "deviceKey": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "method": "POST",
+  "path": "/api/device/biolock/jobs/11111111-2222-3333-4444-555555555555/result",
+  "timestamp": "1732684800",
+  "nonce": "abcdef0123456789abcdef0123456789",
+  "body": "{\"outcome\":\"MATCH\",\"matchedSlot\":1,\"score\":120}",
+  "bodyHash": "ec7f18411e1def46a2a1f3e4e3f283933b0e5bccba56a99784e43d11ecbbbe9d",
+  "canonicalString": "POST\n/api/device/biolock/jobs/11111111-2222-3333-4444-555555555555/result\n1732684800\nabcdef0123456789abcdef0123456789\nec7f18411e1def46a2a1f3e4e3f283933b0e5bccba56a99784e43d11ecbbbe9d",
+  "expectedSignature": "efd540b0731b45b738687b85f936e2fef9f7293e24e1aaa24adf55fc1eabdc74",
+  "jobId": "11111111-2222-3333-4444-555555555555",
+  "challenge": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "outcome": "MATCH",
+  "slot": 1,
+  "slotString": "1",
+  "proofPayloadWithSlot": "11111111-2222-3333-4444-555555555555|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|MATCH|1",
+  "expectedProof": "8f05afef87ccd2d0eb8a1946fd884705273c6e3ce446ca142e0919cd9aef7698",
+  "outcomeNoSlot": "NO_MATCH",
+  "proofPayloadNoSlot": "11111111-2222-3333-4444-555555555555|aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|NO_MATCH|",
+  "expectedProofNoSlot": "addb3571f2b98d879baf1899aee7722441f36ef4f13370d62e280645ae358ad9"
+}

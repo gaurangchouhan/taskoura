@@ -838,6 +838,7 @@ export const TaskPanel: React.FC<TaskPanelProps> = ({
                   <AttachmentsSection
                     taskId={selectedTask.id}
                     projectId={projectId}
+                    isProjectOwner={isOwner}
                   />
                 </div>
               </>

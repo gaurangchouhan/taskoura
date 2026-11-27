@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Navbar } from '../components/Navbar';
 import { projectTabs } from '../components/projects/projectTabs';
 import { DeleteProjectModal } from '../components/projects/DeleteProjectModal';
+import { BioLockSetupChecklist } from '../features/projects/components/BioLockSetupChecklist';
 import { useProjects } from '../hooks/useProjects';
 import { useMembers, useCurrentMembership } from '../hooks/useMembers';
 import { useAuth } from '../context/AuthContext';
@@ -224,6 +225,9 @@ export const ProjectLayout: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* BioLock Setup Checklist for Project Owner */}
+        <BioLockSetupChecklist projectId={project.id} isOwner={isOwner} />
 
         {/* Tab Strip with edge fade hints and horizontal scroll below md */}
         <div className="relative mb-6">

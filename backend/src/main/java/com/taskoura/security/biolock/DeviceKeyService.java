@@ -68,6 +68,10 @@ public class DeviceKeyService {
         return HexFormat.of().formatHex(signature);
     }
 
+    public String calculateSignatureHex(String deviceKeyHex, String method, String path, String timestamp, String nonce, byte[] body) {
+        return calculateRequestSignature(deviceKeyHex, method, path, timestamp, nonce, body);
+    }
+
     public boolean verifyRequestSignature(String deviceKeyHex, String method, String path, String timestamp, String nonce, byte[] body, String providedSignatureHex) {
         if (deviceKeyHex == null || providedSignatureHex == null) {
             return false;
@@ -81,6 +85,10 @@ public class DeviceKeyService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean verifySignature(String deviceKeyHex, String method, String path, String timestamp, String nonce, byte[] body, String providedSignatureHex) {
+        return verifyRequestSignature(deviceKeyHex, method, path, timestamp, nonce, body, providedSignatureHex);
     }
 
     public String calculateProofHex(String deviceKeyHex, UUID jobId, String challenge, String outcome, Integer slot) {

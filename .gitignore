@@ -30,6 +30,10 @@ backend/src/main/resources/application-secret.properties
 device_secrets.py
 */device_secrets.py
 firmware/device_secrets.py
+biolock_state.json
+*/biolock_state.json
+.biolock_sim_state.json
+*/.biolock_sim_state.json
 __pycache__/
 *.pyc
 

@@ -77,7 +77,7 @@ def sha256_hex(data_bytes):
 # ==============================================================================
 # 2. CONTRACT SIGNING & PROOFS
 # ==============================================================================
-def sign_request(method, path, body, device_id, device_key_hex):
+def sign_request(method, path, body, device_id, device_key_hex, timestamp_str=None, nonce_hex=None):
     """
     Produces headers for /api/device/biolock/** according to CONTRACT:
       X-Device-Id: <deviceId>
@@ -86,11 +86,12 @@ def sign_request(method, path, body, device_id, device_key_hex):
       X-Signature: hex(HMAC-SHA256(deviceKey, METHOD + "\n" + PATH + "\n" + TIMESTAMP + "\n" + NONCE + "\n" + SHA256hex(body)))
     """
     method_upper = method.upper()
-    timestamp_str = str(int(time.time()))
+    if timestamp_str is None:
+        timestamp_str = str(int(time.time()))
 
-    # Generate 16 random bytes as 32 hex chars
-    raw_nonce = os.urandom(16)
-    nonce_hex = "".join("%02x" % b for b in raw_nonce)
+    if nonce_hex is None:
+        raw_nonce = os.urandom(16)
+        nonce_hex = "".join("%02x" % b for b in raw_nonce)
 
     body_bytes = body.encode('utf-8') if isinstance(body, str) else (body or b"")
     body_hash_hex = sha256_hex(body_bytes)

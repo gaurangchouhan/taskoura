@@ -2,6 +2,7 @@ export interface BiolockDeviceStatus {
   id: string;
   name: string;
   online: boolean;
+  lastSeenAt?: string | null;
 }
 
 export interface BiometricCredentialStatus {
@@ -43,6 +44,7 @@ export interface EnrollmentStatusResponse {
 export interface ProjectBiometricSettingResponse {
   enabled: boolean;
   credentialId?: string;
+  protectedDocumentsCount?: number;
 }
 
 export interface DocumentAccessRequestResponse {

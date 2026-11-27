@@ -11,4 +11,7 @@ import java.util.UUID;
 public interface AttachmentRepository extends JpaRepository<Attachment, UUID> {
     List<Attachment> findByTaskIdOrderByUploadedAtAsc(UUID taskId);
     List<Attachment> findByTaskId(UUID taskId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(a) FROM Attachment a WHERE a.task.project.id = :projectId AND a.restricted = true")
+    long countByProjectIdAndRestrictedTrue(@org.springframework.data.repository.query.Param("projectId") UUID projectId);
 }

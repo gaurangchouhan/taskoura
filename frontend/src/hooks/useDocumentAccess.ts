@@ -25,8 +25,8 @@ export const useDocumentAccess = ({
   const [accessState, setAccessState] = useState<AccessState>(() => {
     if (!biolockEnabled || !restricted) return 'UNRESTRICTED';
     if (isProjectOwner) return 'LEADER';
-    if (locked) return 'LOCKED';
-    return 'APPROVED';
+    // For non-owners on a restricted document with BioLock enabled, default to LOCKED
+    return 'LOCKED';
   });
 
   const [requestId, setRequestId] = useState<string | null>(null);
@@ -52,10 +52,16 @@ export const useDocumentAccess = ({
       setAccessState('UNRESTRICTED');
     } else if (isProjectOwner) {
       setAccessState('LEADER');
-    } else if (locked && accessState === 'UNRESTRICTED') {
-      setAccessState('LOCKED');
+    } else {
+      // Non-owner on restricted doc: ensure we are not in UNRESTRICTED or LEADER
+      setAccessState((current) => {
+        if (current === 'UNRESTRICTED' || current === 'LEADER') {
+          return 'LOCKED';
+        }
+        return current;
+      });
     }
-  }, [biolockEnabled, restricted, isProjectOwner, locked, accessState]);
+  }, [biolockEnabled, restricted, isProjectOwner]);
 
   // Stop polling helper
   const stopPolling = useCallback(() => {
@@ -145,10 +151,14 @@ export const useDocumentAccess = ({
         } else if (data.state === 'EXPIRED') {
           setAccessState('EXPIRED');
           setFailureReason(data.failureReason || null);
+        } else if (data.state === 'LOCKED') {
+          setAccessState('LOCKED');
         }
       })
       .catch(() => {
-        // Fall back to locked
+        if (isSubscribed && mountedRef.current) {
+          setAccessState('LOCKED');
+        }
       });
 
     return () => {
