@@ -190,7 +190,7 @@ export const BioLockSetupChecklist: React.FC<BioLockSetupChecklistProps> = ({
                 </p>
                 {!deviceRegistered && (
                   <Link
-                    to="/app/profile"
+                    to="/app/profile#biolock-device-card"
                     className="text-indigo-600 hover:text-indigo-700 font-semibold inline-flex items-center gap-0.5 shrink-0"
                   >
                     Register <ExternalLink className="w-3 h-3" />

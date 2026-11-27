@@ -27,6 +27,19 @@ public class BioLockStartupValidator {
         this.dataSource = dataSource;
     }
 
+    public boolean isMasterKeyValid() {
+        String masterKey = biolockProperties.getDeviceMasterKey();
+        if (masterKey == null || masterKey.isBlank()) {
+            return false;
+        }
+        try {
+            byte[] decoded = Base64.getDecoder().decode(masterKey.trim());
+            return decoded != null && decoded.length == 32;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public boolean isSchemaValid() {
         return schemaValid;
     }
@@ -39,6 +52,11 @@ public class BioLockStartupValidator {
     public void validateBioLockSchema() {
         if (!biolockProperties.isEnabled()) {
             return;
+        }
+
+        // Validate DEVICE_MASTER_KEY: exactly 32 bytes decoded base64
+        if (!isMasterKeyValid()) {
+            log.error("[Taskoura BioLock] Startup validation error: DEVICE_MASTER_KEY is not configured or is not a valid 32-byte base64 string. Device registration will return 503 until fixed.");
         }
 
         missingItems.clear();

@@ -15,12 +15,14 @@ export interface BiolockStatusResponse {
   enabled: boolean;
   device?: BiolockDeviceStatus | null;
   credential?: BiometricCredentialStatus | null;
+  problem?: string | null;
 }
 
 export interface DeviceRegistrationResponse {
   deviceId: string;
   deviceKey: string;
-  keyVersion: number;
+  createdAt?: string;
+  keyVersion?: number;
 }
 
 export interface DeviceRotateKeyResponse {

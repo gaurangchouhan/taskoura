@@ -7,7 +7,11 @@ public class BioLockDtos {
 
     public record DeviceRegistrationRequest(String name) {}
 
-    public record DeviceRegistrationResponse(UUID deviceId, String deviceKey) {}
+    public record DeviceRegistrationResponse(UUID deviceId, String deviceKey, Instant createdAt) {
+        public DeviceRegistrationResponse(UUID deviceId, String deviceKey) {
+            this(deviceId, deviceKey, null);
+        }
+    }
 
     public record DeviceRotateKeyResponse(UUID deviceId, String deviceKey, int keyVersion) {}
 
@@ -22,8 +26,13 @@ public class BioLockDtos {
     public record BiolockStatusResponse(
             boolean enabled,
             BiolockDeviceStatusDto device,
-            BiometricCredentialStatusDto credential
-    ) {}
+            BiometricCredentialStatusDto credential,
+            String problem
+    ) {
+        public BiolockStatusResponse(boolean enabled, BiolockDeviceStatusDto device, BiometricCredentialStatusDto credential) {
+            this(enabled, device, credential, null);
+        }
+    }
 
     public record EnrollmentResponse(UUID jobId, String status) {}
 

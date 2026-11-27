@@ -116,6 +116,13 @@ public class GlobalExceptionHandler {
                 .body(buildBody(HttpStatus.BAD_GATEWAY, "AI_UNAVAILABLE", e.getMessage(), request, null));
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleServiceUnavailable(ServiceUnavailableException e, HttpServletRequest request) {
+        String code = e.getCode() != null ? e.getCode() : "SERVICE_UNAVAILABLE";
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(buildBody(HttpStatus.SERVICE_UNAVAILABLE, code, e.getMessage(), request, null));
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException e, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
