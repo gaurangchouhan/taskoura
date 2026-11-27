@@ -3,12 +3,14 @@ package com.taskoura.service;
 import com.taskoura.dto.ProjectMemberDtos.InviteMemberRequest;
 import com.taskoura.dto.ProjectMemberDtos.ProjectMemberResponse;
 import com.taskoura.dto.ProjectMemberDtos.UpdateRoleRequest;
+import com.taskoura.dto.UserAvatarProjection;
 import com.taskoura.entity.Project;
 import com.taskoura.entity.ProjectMember;
 import com.taskoura.entity.User;
 import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectMemberRepository;
+import com.taskoura.repository.UserProfileRepository;
 import com.taskoura.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,10 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,6 +44,9 @@ class ProjectMemberServiceTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private UserProfileRepository userProfileRepository;
 
     @InjectMocks
     private ProjectMemberService projectMemberService;
@@ -75,6 +77,8 @@ class ProjectMemberServiceTest {
         when(userRepository.findByEmailIgnoreCase("jane@example.com")).thenReturn(Optional.of(sampleUser));
         when(projectMemberRepository.existsByProjectIdAndUserId(projectId, sampleUser.getId())).thenReturn(false);
         when(projectMemberRepository.save(any(ProjectMember.class))).thenReturn(savedMember);
+        when(userProfileRepository.findAvatarUrlByUserId(sampleUser.getId()))
+                .thenReturn(Optional.of("https://example.com/avatar.png"));
 
         ProjectMemberResponse response = projectMemberService.inviteMember(projectId, request);
 
@@ -82,7 +86,9 @@ class ProjectMemberServiceTest {
         assertThat(response.userEmail()).isEqualTo("jane@example.com");
         assertThat(response.userName()).isEqualTo("Jane Doe");
         assertThat(response.role()).isEqualTo("Member");
+        assertThat(response.avatarUrl()).isEqualTo("https://example.com/avatar.png");
         verify(projectMemberRepository).save(any(ProjectMember.class));
+        verify(projectMemberRepository).flush();
     }
 
     @Test
@@ -132,6 +138,7 @@ class ProjectMemberServiceTest {
         when(userRepository.findByEmailIgnoreCase("jane@example.com")).thenReturn(Optional.of(sampleUser));
         when(projectMemberRepository.existsByProjectIdAndUserId(projectId, sampleUser.getId())).thenReturn(false);
         when(projectMemberRepository.save(any(ProjectMember.class))).thenReturn(savedMember);
+        when(userProfileRepository.findAvatarUrlByUserId(sampleUser.getId())).thenReturn(Optional.empty());
         doThrow(new RuntimeException("SMTP connect failed")).when(emailService).sendProjectInviteEmail(any(), any(), any(), any(), any());
 
         ProjectMemberResponse response = projectMemberService.inviteMember(projectId, request);
@@ -142,14 +149,14 @@ class ProjectMemberServiceTest {
     }
 
     @Test
-    @DisplayName("getMembers: always includes project owner even when no ProjectMember row exists")
+    @DisplayName("getMembers: synthesizes owner in memory with zero database writes when row is absent")
     void getMembers_ownerAlwaysPresentWhenNoMemberRow() {
         User owner = User.builder().id(UUID.randomUUID()).name("Owner User").email("owner@example.com").build();
         Project projectWithOwner = Project.builder().id(projectId).name("Sample Project").owner(owner).build();
 
         when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(projectWithOwner);
         when(projectMemberRepository.findByProjectId(projectId)).thenReturn(new ArrayList<>());
-        when(projectMemberRepository.save(any(ProjectMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userProfileRepository.findAvatarsByUserIds(anyCollection())).thenReturn(Collections.emptyList());
 
         List<ProjectMemberResponse> responses = projectMemberService.getMembers(projectId);
 
@@ -157,31 +164,65 @@ class ProjectMemberServiceTest {
         assertThat(responses.get(0).role()).isEqualTo("Owner");
         assertThat(responses.get(0).userEmail()).isEqualTo("owner@example.com");
         assertThat(responses.get(0).userName()).isEqualTo("Owner User");
-        verify(projectMemberRepository).save(any(ProjectMember.class));
+        assertThat(responses.get(0).id()).isNull(); // In-memory synthesized representation
+        // Strictly read-only: no writes performed!
+        verify(projectMemberRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("getMembers: returns list of ProjectMemberResponse")
-    void getMembers_success() {
-        ProjectMember member = ProjectMember.builder()
+    @DisplayName("getMembers: owner appears exactly once when already present in project_members")
+    void getMembers_ownerAlreadyPresent_appearsExactlyOnce() {
+        User owner = User.builder().id(UUID.randomUUID()).name("Owner User").email("owner@example.com").build();
+        Project projectWithOwner = Project.builder().id(projectId).name("Sample Project").owner(owner).build();
+        ProjectMember ownerMember = ProjectMember.builder()
                 .id(UUID.randomUUID())
-                .project(sampleProject)
-                .user(sampleUser)
+                .project(projectWithOwner)
+                .user(owner)
                 .role("Owner")
                 .build();
 
-        when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(sampleProject);
-        when(projectMemberRepository.findByProjectId(projectId)).thenReturn(List.of(member));
+        when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(projectWithOwner);
+        when(projectMemberRepository.findByProjectId(projectId)).thenReturn(List.of(ownerMember));
+        when(userProfileRepository.findAvatarsByUserIds(anyCollection())).thenReturn(Collections.emptyList());
+
+        List<ProjectMemberResponse> responses = projectMemberService.getMembers(projectId);
+
+        // Exactly once — not duplicated!
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).role()).isEqualTo("Owner");
+        assertThat(responses.get(0).userId()).isEqualTo(owner.getId());
+        verify(projectMemberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("getMembers: batch avatar projection resolves avatars correctly")
+    void getMembers_batchAvatarProjection_resolvesAvatars() {
+        UUID ownerId = UUID.randomUUID();
+        User owner = User.builder().id(ownerId).name("Owner User").email("owner@example.com").build();
+        Project projectWithOwner = Project.builder().id(projectId).name("Sample Project").owner(owner).build();
+        ProjectMember ownerMember = ProjectMember.builder()
+                .id(UUID.randomUUID())
+                .project(projectWithOwner)
+                .user(owner)
+                .role("Owner")
+                .build();
+
+        UserAvatarProjection mockProjection = mock(UserAvatarProjection.class);
+        when(mockProjection.getUserId()).thenReturn(ownerId);
+        when(mockProjection.getAvatarUrl()).thenReturn("https://example.com/owner-avatar.png");
+
+        when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(projectWithOwner);
+        when(projectMemberRepository.findByProjectId(projectId)).thenReturn(List.of(ownerMember));
+        when(userProfileRepository.findAvatarsByUserIds(anyCollection())).thenReturn(List.of(mockProjection));
 
         List<ProjectMemberResponse> responses = projectMemberService.getMembers(projectId);
 
         assertThat(responses).hasSize(1);
-        assertThat(responses.get(0).role()).isEqualTo("Owner");
-        assertThat(responses.get(0).userEmail()).isEqualTo("jane@example.com");
+        assertThat(responses.get(0).avatarUrl()).isEqualTo("https://example.com/owner-avatar.png");
     }
 
     @Test
-    @DisplayName("updateRole: updates role and returns updated response")
+    @DisplayName("updateRole: updates role and returns updated response with projection avatar")
     void updateRole_success() {
         UUID userId = sampleUser.getId();
         UpdateRoleRequest request = new UpdateRoleRequest("Owner");
@@ -194,11 +235,14 @@ class ProjectMemberServiceTest {
 
         when(projectMemberRepository.findByProjectIdAndUserId(projectId, userId)).thenReturn(Optional.of(member));
         when(projectMemberRepository.save(any(ProjectMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userProfileRepository.findAvatarUrlByUserId(userId)).thenReturn(Optional.of("https://example.com/jane.png"));
 
         ProjectMemberResponse response = projectMemberService.updateRole(projectId, userId, request);
 
         assertThat(response.role()).isEqualTo("Owner");
+        assertThat(response.avatarUrl()).isEqualTo("https://example.com/jane.png");
         verify(projectMemberRepository).save(member);
+        verify(projectMemberRepository).flush();
     }
 
     @Test
@@ -230,6 +274,7 @@ class ProjectMemberServiceTest {
         projectMemberService.removeMember(projectId, userId);
 
         verify(projectMemberRepository).delete(member);
+        verify(projectMemberRepository).flush();
     }
 
     @Test

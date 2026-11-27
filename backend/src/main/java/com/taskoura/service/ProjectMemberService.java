@@ -1,12 +1,14 @@
 package com.taskoura.service;
 
 import com.taskoura.dto.ProjectMemberDtos.*;
+import com.taskoura.dto.UserAvatarProjection;
 import com.taskoura.entity.Project;
 import com.taskoura.entity.ProjectMember;
 import com.taskoura.entity.User;
 import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectMemberRepository;
+import com.taskoura.repository.UserProfileRepository;
 import com.taskoura.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,10 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -31,7 +31,7 @@ public class ProjectMemberService {
     private final UserRepository userRepository;
     private final ProjectService projectService;
     private final NotificationService notificationService;
-    private final com.taskoura.repository.UserProfileRepository userProfileRepository;
+    private final UserProfileRepository userProfileRepository;
     private final EmailService emailService;
     private final com.taskoura.repository.DocumentAccessRequestRepository documentAccessRequestRepository;
 
@@ -39,7 +39,7 @@ public class ProjectMemberService {
                                 UserRepository userRepository,
                                 ProjectService projectService,
                                 NotificationService notificationService,
-                                @Autowired(required = false) com.taskoura.repository.UserProfileRepository userProfileRepository,
+                                @Autowired(required = false) UserProfileRepository userProfileRepository,
                                 @Autowired(required = false) EmailService emailService,
                                 @Autowired(required = false) com.taskoura.repository.DocumentAccessRequestRepository documentAccessRequestRepository) {
         this.projectMemberRepository = projectMemberRepository;
@@ -71,7 +71,16 @@ public class ProjectMemberService {
 
         ProjectMember saved = projectMemberRepository.save(member);
         projectMemberRepository.flush();
-        ProjectMemberResponse response = toResponse(saved);
+
+        String avatarUrl = getAvatarUrl(user.getId());
+        ProjectMemberResponse response = new ProjectMemberResponse(
+                saved.getId(),
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                saved.getRole(),
+                avatarUrl
+        );
 
         // Schedule notification and email AFTER transaction commits (best-effort)
         Runnable postCommitAction = () -> dispatchPostInviteActions(project, user, saved.getRole());
@@ -123,53 +132,78 @@ public class ProjectMemberService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<ProjectMemberResponse> getMembers(UUID projectId) {
         Project project = projectService.getProjectEntityOrThrow(projectId);
 
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
 
-        boolean ownerFound = false;
-        if (project.getOwner() != null) {
-            ownerFound = members.stream()
-                    .anyMatch(m -> m.getUser() != null && m.getUser().getId().equals(project.getOwner().getId()));
-
-            if (!ownerFound) {
-                // Auto-heal in database if missing
-                ProjectMember ownerMember = ProjectMember.builder()
-                        .project(project)
-                        .user(project.getOwner())
-                        .role("Owner")
-                        .build();
-                try {
-                    ProjectMember saved = projectMemberRepository.save(ownerMember);
-                    if (saved != null) {
-                        ownerMember = saved;
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to persist auto-healed owner membership: {}", e.getMessage());
+        // Gather all user IDs to batch-fetch avatars in a single targeted projection query
+        Set<UUID> userIds = new HashSet<>();
+        if (members != null) {
+            for (ProjectMember pm : members) {
+                if (pm != null && pm.getUser() != null && pm.getUser().getId() != null) {
+                    userIds.add(pm.getUser().getId());
                 }
-                members = new ArrayList<>(members);
-                members.add(0, ownerMember);
-                ownerFound = true;
+            }
+        }
+        if (project.getOwner() != null && project.getOwner().getId() != null) {
+            userIds.add(project.getOwner().getId());
+        }
+
+        Map<UUID, String> avatarMap = Collections.emptyMap();
+        if (!userIds.isEmpty() && userProfileRepository != null) {
+            List<UserAvatarProjection> avatars = userProfileRepository.findAvatarsByUserIds(userIds);
+            if (avatars != null) {
+                avatarMap = avatars.stream()
+                        .filter(p -> p != null && p.getUserId() != null)
+                        .collect(Collectors.toMap(
+                                UserAvatarProjection::getUserId,
+                                p -> p.getAvatarUrl() != null ? p.getAvatarUrl() : "",
+                                (existing, replacement) -> existing
+                        ));
             }
         }
 
-        List<ProjectMemberResponse> responses = new ArrayList<>(members.stream()
-                .filter(Objects::nonNull)
-                .map(this::toResponse)
-                .filter(Objects::nonNull)
-                .toList());
+        List<ProjectMemberResponse> responses = new ArrayList<>();
+        boolean ownerPresent = false;
+        UUID ownerId = project.getOwner() != null ? project.getOwner().getId() : null;
 
-        // Fail-safe: If the project has an owner and for any reason responses does not contain Owner,
-        // ALWAYS prepend an Owner response so the members list ALWAYS includes the project owner!
-        if (project.getOwner() != null && responses.stream().noneMatch(r -> r.userId().equals(project.getOwner().getId()))) {
+        if (members != null) {
+            for (ProjectMember pm : members) {
+                if (pm == null || pm.getUser() == null || pm.getUser().getId() == null) continue;
+                UUID uid = pm.getUser().getId();
+                if (ownerId != null && ownerId.equals(uid)) {
+                    ownerPresent = true;
+                }
+                String avatarUrl = avatarMap.get(uid);
+                if (avatarUrl != null && avatarUrl.isBlank()) avatarUrl = null;
+
+                responses.add(new ProjectMemberResponse(
+                        pm.getId(),
+                        uid,
+                        pm.getUser().getName(),
+                        pm.getUser().getEmail(),
+                        pm.getRole(),
+                        avatarUrl
+                ));
+            }
+        }
+
+        // If the project owner is missing from project_members (legacy projects), synthesize in memory:
+        // ZERO database writes during GET, exactly once, correct role, and no double-counting.
+        if (!ownerPresent && project.getOwner() != null) {
+            User owner = project.getOwner();
+            String avatarUrl = avatarMap.get(owner.getId());
+            if (avatarUrl != null && avatarUrl.isBlank()) avatarUrl = null;
+
             responses.add(0, new ProjectMemberResponse(
-                    UUID.randomUUID(),
-                    project.getOwner().getId(),
-                    project.getOwner().getName(),
-                    project.getOwner().getEmail(),
+                    null,
+                    owner.getId(),
+                    owner.getName(),
+                    owner.getEmail(),
                     "Owner",
-                    null
+                    avatarUrl
             ));
         }
 
@@ -182,7 +216,17 @@ public class ProjectMemberService {
 
         member.setRole(request.role());
         ProjectMember saved = projectMemberRepository.save(member);
-        return toResponse(saved);
+        projectMemberRepository.flush();
+
+        String avatarUrl = getAvatarUrl(userId);
+        return new ProjectMemberResponse(
+                saved.getId(),
+                member.getUser().getId(),
+                member.getUser().getName(),
+                member.getUser().getEmail(),
+                saved.getRole(),
+                avatarUrl
+        );
     }
 
     public void removeMember(UUID projectId, UUID userId) {
@@ -196,20 +240,10 @@ public class ProjectMemberService {
         }
     }
 
-    private ProjectMemberResponse toResponse(ProjectMember member) {
-        String avatarUrl = null;
-        if (userProfileRepository != null && member.getUser() != null && member.getUser().getId() != null) {
-            avatarUrl = userProfileRepository.findById(member.getUser().getId())
-                    .map(com.taskoura.entity.UserProfile::getAvatarUrl)
-                    .orElse(null);
+    private String getAvatarUrl(UUID userId) {
+        if (userProfileRepository != null && userId != null) {
+            return userProfileRepository.findAvatarUrlByUserId(userId).orElse(null);
         }
-        return new ProjectMemberResponse(
-                member.getId(),
-                member.getUser().getId(),
-                member.getUser().getName(),
-                member.getUser().getEmail(),
-                member.getRole(),
-                avatarUrl
-        );
+        return null;
     }
 }
