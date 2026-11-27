@@ -8,6 +8,7 @@ import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.ForbiddenException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.exception.RateLimitedException;
+import com.taskoura.exception.ServiceUnavailableException;
 import com.taskoura.repository.*;
 import com.taskoura.security.biolock.DeviceKeyService;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -80,15 +81,31 @@ public class BioLockDeviceService {
     public DeviceRegistrationResponse registerDevice(User user, DeviceRegistrationRequest request) {
         ensureBioLockEnabled();
 
+        if (!deviceKeyService.isMasterKeyValid()) {
+            throw new ServiceUnavailableException("BIOLOCK_NOT_CONFIGURED", "BioLock device registration is not available: DEVICE_MASTER_KEY is not configured or is invalid.");
+        }
+
         // Leader rule: One ACTIVE device per leader
-        if (biolockDeviceRepository.existsByOwnerUserIdAndStatus(user.getId(), DeviceStatus.ACTIVE)) {
-            throw new ConflictException("ACTIVE_DEVICE_EXISTS", "Leader already has an active device. Revoke it before registering a new one.");
+        Optional<BiolockDevice> existingOpt = biolockDeviceRepository.findByOwnerUserIdAndStatus(user.getId(), DeviceStatus.ACTIVE);
+        if (existingOpt.isPresent()) {
+            throw new ConflictException(
+                    "BIOLOCK_DEVICE_EXISTS",
+                    "Leader already has an active device. Revoke it before registering a new one.",
+                    Map.of("deviceId", existingOpt.get().getId())
+            );
         }
 
         int keyVersion = 1;
-        String name = (request != null && request.name() != null && !request.name().isBlank())
-                ? request.name().trim()
-                : "BioLock Scanner";
+        String name;
+        if (request != null && request.name() != null && !request.name().isBlank()) {
+            String trimmed = request.name().trim();
+            if (trimmed.length() < 3 || trimmed.length() > 40) {
+                throw new BadRequestException("VALIDATION_FAILED", "Device name must be between 3 and 40 characters");
+            }
+            name = trimmed;
+        } else {
+            name = "BioLock Scanner";
+        }
 
         Instant now = clock.instant();
         BiolockDevice device = BiolockDevice.builder()
@@ -113,7 +130,7 @@ public class BioLockDeviceService {
                 "Device registered: " + name
         );
 
-        return new DeviceRegistrationResponse(deviceId, deviceKeyHex);
+        return new DeviceRegistrationResponse(deviceId, deviceKeyHex, now);
     }
 
     @Transactional
@@ -308,7 +325,12 @@ public class BioLockDeviceService {
             credDto = new BiometricCredentialStatusDto(cred.getId(), cred.getStatus().name(), cred.getSensorSlotId());
         }
 
-        return new BiolockStatusResponse(enabled, deviceDto, credDto);
+        String problem = null;
+        if (enabled && !deviceKeyService.isMasterKeyValid()) {
+            problem = "DEVICE_MASTER_KEY_INVALID";
+        }
+
+        return new BiolockStatusResponse(enabled, deviceDto, credDto, problem);
     }
 
     @Transactional(readOnly = true)

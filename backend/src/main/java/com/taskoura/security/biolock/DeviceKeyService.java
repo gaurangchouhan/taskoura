@@ -1,6 +1,7 @@
 package com.taskoura.security.biolock;
 
 import com.taskoura.config.BiolockProperties;
+import com.taskoura.exception.ServiceUnavailableException;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -24,15 +25,32 @@ public class DeviceKeyService {
         this.biolockProperties = biolockProperties;
     }
 
+    public boolean isMasterKeyValid() {
+        String masterKey = biolockProperties.getDeviceMasterKey();
+        if (masterKey == null || masterKey.isBlank()) {
+            return false;
+        }
+        try {
+            byte[] decoded = Base64.getDecoder().decode(masterKey.trim());
+            return decoded != null && decoded.length == 32;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public byte[] getMasterKeyBytes() {
         String masterKey = biolockProperties.getDeviceMasterKey();
         if (masterKey == null || masterKey.isBlank()) {
-            throw new IllegalStateException("DEVICE_MASTER_KEY is not configured");
+            throw new ServiceUnavailableException("BIOLOCK_NOT_CONFIGURED", "DEVICE_MASTER_KEY is not configured on the server");
         }
         try {
-            return Base64.getDecoder().decode(masterKey.trim());
+            byte[] decoded = Base64.getDecoder().decode(masterKey.trim());
+            if (decoded.length != 32) {
+                throw new ServiceUnavailableException("BIOLOCK_NOT_CONFIGURED", "DEVICE_MASTER_KEY must be exactly 32 bytes when decoded");
+            }
+            return decoded;
         } catch (IllegalArgumentException e) {
-            throw new IllegalStateException("DEVICE_MASTER_KEY must be a valid base64 string", e);
+            throw new ServiceUnavailableException("BIOLOCK_NOT_CONFIGURED", "DEVICE_MASTER_KEY must be a valid base64 string");
         }
     }
 

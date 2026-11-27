@@ -140,6 +140,31 @@ public class BioLockDeviceAndJobIntegrationTest {
     }
 
     @Test
+    @DisplayName("Invalid master key returns 503 BIOLOCK_NOT_CONFIGURED and status includes problem")
+    void testInvalidMasterKeyReturns503() throws Exception {
+        String originalKey = biolockProperties.getDeviceMasterKey();
+        try {
+            biolockProperties.setDeviceMasterKey("invalid-not-base64!!");
+
+            // Status endpoint includes problem
+            mockMvc.perform(get("/api/biolock/status")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token2))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.problem", is("DEVICE_MASTER_KEY_INVALID")));
+
+            // Registration returns 503 BIOLOCK_NOT_CONFIGURED
+            mockMvc.perform(post("/api/biolock/devices")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token2)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"Test Device\"}"))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.code", is("BIOLOCK_NOT_CONFIGURED")));
+        } finally {
+            biolockProperties.setDeviceMasterKey(originalKey);
+        }
+    }
+
+    @Test
     @DisplayName("Device registration returns deviceId and deviceKey; cannot register duplicate active device")
     void testDeviceRegistrationAndDuplicatePrevention() throws Exception {
         var res = mockMvc.perform(post("/api/biolock/devices")
@@ -154,13 +179,16 @@ public class BioLockDeviceAndJobIntegrationTest {
         DeviceRegistrationResponse reg = objectMapper.readValue(res.getResponse().getContentAsString(), DeviceRegistrationResponse.class);
         assertThat(reg.deviceId()).isNotNull();
         assertThat(reg.deviceKey()).hasSize(64);
+        assertThat(reg.createdAt()).isNotNull();
 
-        // Attempting to register another active device fails with 409
+        // Attempting to register another active device fails with 409 and BIOLOCK_DEVICE_EXISTS + deviceId
         mockMvc.perform(post("/api/biolock/devices")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Second Scanner\"}"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code", is("BIOLOCK_DEVICE_EXISTS")))
+                .andExpect(jsonPath("$.deviceId", is(reg.deviceId().toString())));
     }
 
     @Test

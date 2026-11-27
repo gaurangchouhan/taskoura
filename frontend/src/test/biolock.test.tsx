@@ -290,6 +290,63 @@ describe('MODULE BL-5: Frontend Taskoura BioLock', () => {
 
     // Device online badge should now be present
     expect(screen.getByTestId('device-online-badge')).toHaveTextContent('Device Online');
+
+    // Modal contains copy-all environment snippet
+    expect(screen.getByText(/export BIOLOCK_DEVICE_KEY=a1b2c3d4e5f60718293a4b5c6d7e8f90/i)).toBeInTheDocument();
+
+    // Verify secrets are NOT written to localStorage or sessionStorage
+    expect(localStorage.getItem('deviceKey')).toBeNull();
+    expect(sessionStorage.getItem('deviceKey')).toBeNull();
+
+    // Clicking "I saved these" closes modal and clears memory
+    const savedBtn = screen.getByRole('button', { name: /I saved these/i });
+    await user.click(savedBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('one-time-key-alert')).toBeNull();
+    });
+  });
+
+  it('2b. Registration errors: plain-word error messages for 400, 409, 429, and 503 without crashing UI', async () => {
+    const user = userEvent.setup();
+
+    // 1. 503 BIOLOCK_NOT_CONFIGURED
+    server.use(
+      http.post('*/api/biolock/devices', () => {
+        return HttpResponse.json(
+          { code: 'BIOLOCK_NOT_CONFIGURED', message: 'BioLock service is not configured on the server.' },
+          { status: 503 }
+        );
+      })
+    );
+
+    renderWithProviders(<BioLockDeviceCard />);
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Device name/i)).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByPlaceholderText(/Device name/i);
+    await user.type(nameInput, 'Scanner 503');
+    await user.click(screen.getByRole('button', { name: /Register Device/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('biolock-server-error')).toHaveTextContent(/not configured on the server/i);
+    });
+
+    // 2. 409 BIOLOCK_DEVICE_EXISTS
+    server.use(
+      http.post('*/api/biolock/devices', () => {
+        return HttpResponse.json(
+          { code: 'BIOLOCK_DEVICE_EXISTS', message: 'A BioLock device is already registered for your account.' },
+          { status: 409 }
+        );
+      })
+    );
+
+    await user.click(screen.getByRole('button', { name: /Register Device/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('biolock-server-error')).toHaveTextContent(/already registered for your account/i);
+    });
   });
 
   // ---------------------------------------------------------------------------
