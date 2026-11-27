@@ -6,6 +6,7 @@ import com.taskoura.exception.ForbiddenException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -48,11 +49,30 @@ public class DashboardReportService {
         this.userRepository = userRepository;
     }
 
+    @Transactional
     public DashboardResponse getDashboard(UUID projectId) {
-        projectService.getProjectEntityOrThrow(projectId);
+        Project project = projectService.getProjectEntityOrThrow(projectId);
 
         List<Task> tasks = taskRepository.findByProjectId(projectId);
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+
+        if (project.getOwner() != null) {
+            boolean ownerPresent = members.stream()
+                    .anyMatch(m -> m.getUser() != null && m.getUser().getId().equals(project.getOwner().getId()));
+            if (!ownerPresent) {
+                ProjectMember ownerMember = ProjectMember.builder()
+                        .project(project)
+                        .user(project.getOwner())
+                        .role("Owner")
+                        .build();
+                try {
+                    ownerMember = projectMemberRepository.save(ownerMember);
+                } catch (Exception ignored) {
+                }
+                members = new ArrayList<>(members);
+                members.add(0, ownerMember);
+            }
+        }
 
         // Design Decision (Module 14): Subtasks (where parentTask != null) are excluded
         // from project-level totalTasks, completedTasks, and completionPercentage to represent
@@ -120,12 +140,14 @@ public class DashboardReportService {
         );
     }
 
+    @Transactional
     public List<MemberPerformanceReport> getPerformanceReport(UUID projectId, String callerEmail) {
         Project project = projectService.getProjectEntityOrThrow(projectId);
         User caller = userRepository.findByEmail(callerEmail)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        boolean isOwner = (project.getOwner() != null && project.getOwner().getId().equals(caller.getId())) ||
+        boolean isOwner = (project.getOwner() != null && (project.getOwner().getId().equals(caller.getId()) ||
+                callerEmail.equalsIgnoreCase(project.getOwner().getEmail()))) ||
                 projectMemberRepository.findByProjectIdAndUserId(projectId, caller.getId())
                         .map(m -> "Owner".equalsIgnoreCase(m.getRole()))
                         .orElse(false);
@@ -135,6 +157,24 @@ public class DashboardReportService {
         }
 
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
+
+        if (project.getOwner() != null) {
+            boolean ownerPresent = members.stream()
+                    .anyMatch(m -> m.getUser() != null && m.getUser().getId().equals(project.getOwner().getId()));
+            if (!ownerPresent) {
+                ProjectMember ownerMember = ProjectMember.builder()
+                        .project(project)
+                        .user(project.getOwner())
+                        .role("Owner")
+                        .build();
+                try {
+                    ownerMember = projectMemberRepository.save(ownerMember);
+                } catch (Exception ignored) {
+                }
+                members = new ArrayList<>(members);
+                members.add(0, ownerMember);
+            }
+        }
         List<Task> tasks = taskRepository.findByProjectId(projectId);
         List<TaskStatusLog> statusLogs = taskStatusLogRepository.findByTaskProjectId(projectId);
         List<Bug> bugs = bugRepository.findByTaskProjectId(projectId);

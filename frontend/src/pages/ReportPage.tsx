@@ -21,7 +21,7 @@ export const ReportPage: React.FC = () => {
   }
 
   const { isOwner, isLoading: isCheckingMembership } = useCurrentMembership(projectId);
-  const { data: report, isLoading: isLoadingReport, error } = useReport(projectId);
+  const { data: report, isLoading: isLoadingReport, error } = useReport(projectId, isOwner);
 
   // Check for 403 Forbidden either from backend error response or non-owner membership
   const isForbidden =
