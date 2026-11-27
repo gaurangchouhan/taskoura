@@ -1,5 +1,6 @@
 package com.taskoura.dto;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public class BioLockDtos {
@@ -10,7 +11,11 @@ public class BioLockDtos {
 
     public record DeviceRotateKeyResponse(UUID deviceId, String deviceKey, int keyVersion) {}
 
-    public record BiolockDeviceStatusDto(UUID id, String name, boolean online) {}
+    public record BiolockDeviceStatusDto(UUID id, String name, boolean online, Instant lastSeenAt) {
+        public BiolockDeviceStatusDto(UUID id, String name, boolean online) {
+            this(id, name, online, null);
+        }
+    }
 
     public record BiometricCredentialStatusDto(UUID id, String status, Integer slot) {}
 
@@ -26,7 +31,11 @@ public class BioLockDtos {
 
     public record ProjectBiometricSettingRequest(boolean enabled) {}
 
-    public record ProjectBiometricSettingResponse(boolean enabled, UUID credentialId) {}
+    public record ProjectBiometricSettingResponse(boolean enabled, UUID credentialId, Long protectedDocumentsCount) {
+        public ProjectBiometricSettingResponse(boolean enabled, UUID credentialId) {
+            this(enabled, credentialId, 0L);
+        }
+    }
 
     public record DeviceJobResponse(
             UUID jobId,

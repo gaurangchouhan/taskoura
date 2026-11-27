@@ -224,6 +224,42 @@ class BioLockFirmwareTests(unittest.TestCase):
         expected_proof2 = hmac.new(bytes.fromhex(device_key), expected_payload2.encode('utf-8'), hashlib.sha256).hexdigest()
         self.assertEqual(proof_no_slot, expected_proof2)
 
+    def test_03b_canonical_test_vector(self):
+        """Verifies signature and proofs against docs/biolock/test-vector.json."""
+        tv_path = os.path.join(FIRMWARE_DIR, "..", "docs", "biolock", "test-vector.json")
+        self.assertTrue(os.path.exists(tv_path))
+        with open(tv_path, "r", encoding="utf-8") as f:
+            tv = json.load(f)
+
+        headers = device_client.sign_request(
+            method=tv["method"],
+            path=tv["path"],
+            body=tv["body"],
+            device_id=tv["deviceId"],
+            device_key_hex=tv["deviceKey"],
+            timestamp_str=tv["timestamp"],
+            nonce_hex=tv["nonce"]
+        )
+        self.assertEqual(headers["X-Signature"], tv["expectedSignature"])
+
+        proof_with_slot = device_client.generate_proof(
+            device_key_hex=tv["deviceKey"],
+            job_id=tv["jobId"],
+            challenge=tv["challenge"],
+            outcome=tv["outcome"],
+            slot=tv["slot"]
+        )
+        self.assertEqual(proof_with_slot, tv["expectedProof"])
+
+        proof_no_slot = device_client.generate_proof(
+            device_key_hex=tv["deviceKey"],
+            job_id=tv["jobId"],
+            challenge=tv["challenge"],
+            outcome=tv["outcomeNoSlot"],
+            slot=None
+        )
+        self.assertEqual(proof_no_slot, tv["expectedProofNoSlot"])
+
     # --------------------------------------------------------------------------
     # B. FINGERPRINT SENSOR DRIVER & ACTIONS
     # --------------------------------------------------------------------------

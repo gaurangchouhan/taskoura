@@ -150,6 +150,9 @@ CREATE INDEX IF NOT EXISTS idx_biolock_audit_project ON biolock_audit_events (pr
 CREATE INDEX IF NOT EXISTS idx_biolock_audit_device ON biolock_audit_events (device_id);
 CREATE INDEX IF NOT EXISTS idx_biolock_audit_created ON biolock_audit_events (created_at);
 
+select column_name, data_type, column_default from information_schema.columns
+where table_name = 'attachments' order by ordinal_position;
+
 -- ==============================================================================
 -- Rollback Note:
 -- To revert this migration:
@@ -162,3 +165,4 @@ CREATE INDEX IF NOT EXISTS idx_biolock_audit_created ON biolock_audit_events (cr
 -- DROP TABLE IF EXISTS biolock_devices;
 -- ALTER TABLE attachments DROP COLUMN IF EXISTS restricted;
 -- ==============================================================================
+

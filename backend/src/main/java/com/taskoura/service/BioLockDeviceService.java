@@ -29,6 +29,7 @@ public class BioLockDeviceService {
     private final BiolockJobRepository biolockJobRepository;
     private final DocumentAccessRequestRepository documentAccessRequestRepository;
     private final ProjectRepository projectRepository;
+    private final AttachmentRepository attachmentRepository;
     private final DeviceKeyService deviceKeyService;
     private final BioLockAuditService auditService;
     private final BiolockProperties biolockProperties;
@@ -44,6 +45,7 @@ public class BioLockDeviceService {
             BiolockJobRepository biolockJobRepository,
             DocumentAccessRequestRepository documentAccessRequestRepository,
             ProjectRepository projectRepository,
+            AttachmentRepository attachmentRepository,
             DeviceKeyService deviceKeyService,
             BioLockAuditService auditService,
             BiolockProperties biolockProperties,
@@ -55,6 +57,7 @@ public class BioLockDeviceService {
         this.biolockJobRepository = biolockJobRepository;
         this.documentAccessRequestRepository = documentAccessRequestRepository;
         this.projectRepository = projectRepository;
+        this.attachmentRepository = attachmentRepository;
         this.deviceKeyService = deviceKeyService;
         this.auditService = auditService;
         this.biolockProperties = biolockProperties;
@@ -295,7 +298,7 @@ public class BioLockDeviceService {
             BiolockDevice device = deviceOpt.get();
             boolean online = device.getLastSeenAt() != null
                     && device.getLastSeenAt().isAfter(now.minusSeconds(biolockProperties.getDeviceOnlineSeconds()));
-            deviceDto = new BiolockDeviceStatusDto(device.getId(), device.getName(), online);
+            deviceDto = new BiolockDeviceStatusDto(device.getId(), device.getName(), online, device.getLastSeenAt());
         }
 
         BiometricCredentialStatusDto credDto = null;
@@ -319,9 +322,11 @@ public class BioLockDeviceService {
         }
 
         Optional<ProjectBiometricSetting> settingOpt = projectBiometricSettingRepository.findByProjectId(projectId);
+        long protectedDocs = attachmentRepository.countByProjectIdAndRestrictedTrue(projectId);
         return new ProjectBiometricSettingResponse(
                 settingOpt.map(ProjectBiometricSetting::isEnabled).orElse(false),
-                settingOpt.map(ProjectBiometricSetting::getCredentialId).orElse(null)
+                settingOpt.map(ProjectBiometricSetting::getCredentialId).orElse(null),
+                protectedDocs
         );
     }
 
@@ -341,6 +346,8 @@ public class BioLockDeviceService {
         if (!isOwner) {
             throw new ForbiddenException("Only the project owner can configure BioLock");
         }
+
+        long protectedDocs = attachmentRepository.countByProjectIdAndRestrictedTrue(projectId);
 
         if (request.enabled()) {
             BiometricCredential credential = biometricCredentialRepository.findByUserIdAndStatus(user.getId(), CredentialStatus.ACTIVE)
@@ -363,7 +370,7 @@ public class BioLockDeviceService {
                     "BioLock enabled with credential " + credential.getId()
             );
 
-            return new ProjectBiometricSettingResponse(true, credential.getId());
+            return new ProjectBiometricSettingResponse(true, credential.getId(), protectedDocs);
         } else {
             Optional<ProjectBiometricSetting> settingOpt = projectBiometricSettingRepository.findByProjectId(projectId);
             UUID credentialId = null;
@@ -386,7 +393,7 @@ public class BioLockDeviceService {
                         "BioLock disabled for project"
                 );
             }
-            return new ProjectBiometricSettingResponse(false, credentialId);
+            return new ProjectBiometricSettingResponse(false, credentialId, protectedDocs);
         }
     }
 

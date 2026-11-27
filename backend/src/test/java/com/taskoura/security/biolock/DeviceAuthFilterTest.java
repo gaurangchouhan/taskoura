@@ -230,4 +230,40 @@ class DeviceAuthFilterTest {
         assertThat(response.getStatus()).isEqualTo(401);
         verify(filterChain, never()).doFilter(any(), any());
     }
+
+    @Test
+    @DisplayName("Shared Test Vector: Validates signature and proof against docs/biolock/test-vector.json")
+    void testVectorValidation() throws Exception {
+        java.nio.file.Path path = java.nio.file.Files.exists(java.nio.file.Path.of("docs/biolock/test-vector.json"))
+                ? java.nio.file.Path.of("docs/biolock/test-vector.json")
+                : java.nio.file.Path.of("../docs/biolock/test-vector.json");
+
+        String content = java.nio.file.Files.readString(path);
+        com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(content);
+
+        String deviceKey = root.get("deviceKey").asText();
+        String method = root.get("method").asText();
+        String reqPath = root.get("path").asText();
+        String timestamp = root.get("timestamp").asText();
+        String nonce = root.get("nonce").asText();
+        String body = root.get("body").asText();
+        String expectedSig = root.get("expectedSignature").asText();
+
+        boolean sigValid = deviceKeyService.verifySignature(deviceKey, method, reqPath, timestamp, nonce, body.getBytes(java.nio.charset.StandardCharsets.UTF_8), expectedSig);
+        assertThat(sigValid).isTrue();
+
+        UUID jobId = UUID.fromString(root.get("jobId").asText());
+        String challenge = root.get("challenge").asText();
+        String outcome = root.get("outcome").asText();
+        int slot = root.get("slot").asInt();
+        String expectedProof = root.get("expectedProof").asText();
+
+        boolean proofValid = deviceKeyService.verifyProof(deviceKey, jobId, challenge, outcome, slot, expectedProof);
+        assertThat(proofValid).isTrue();
+
+        String outcomeNoSlot = root.get("outcomeNoSlot").asText();
+        String expectedProofNoSlot = root.get("expectedProofNoSlot").asText();
+        boolean proofNoSlotValid = deviceKeyService.verifyProof(deviceKey, jobId, challenge, outcomeNoSlot, null, expectedProofNoSlot);
+        assertThat(proofNoSlotValid).isTrue();
+    }
 }
