@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { UserPlus, Mail, AlertCircle, ChevronDown } from 'lucide-react';
 import { useInviteMember } from '../../hooks/useMembers';
 import { ProjectMember } from '../../types/member';
 import { getErrorMessage } from '../../lib/errors';
+import { queryKeys } from '../../lib/queryKeys';
 
 interface InviteMemberFormProps {
   projectId: string;
@@ -14,6 +16,7 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
   projectId,
   onMemberInvited,
 }) => {
+  const queryClient = useQueryClient();
   const { mutateAsync: inviteMember, isPending } = useInviteMember(projectId);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'Owner' | 'Member'>('Member');
@@ -36,6 +39,9 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
       setEmail('');
       setRole('Member');
       setErrorMessage('');
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.members(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.list() });
       if (onMemberInvited) {
         onMemberInvited(created);
       }
@@ -62,7 +68,7 @@ export const InviteMemberForm: React.FC<InviteMemberFormProps> = ({
         setErrorMessage('Only the project owner can invite members');
         toast.error('Only the project owner can invite members');
       } else {
-        const fallbackMsg = (rawMsg && rawMsg !== 'An unexpected error occurred') ? rawMsg : getErrorMessage(err);
+        const fallbackMsg = getErrorMessage(err);
         setErrorMessage(fallbackMsg);
         toast.error(fallbackMsg);
       }

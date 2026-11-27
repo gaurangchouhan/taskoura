@@ -481,4 +481,56 @@ describe('MODULE R5: Team tab & Project Member Management', () => {
       expect(screen.queryByText('dave@example.com')).not.toBeInTheDocument();
     });
   });
+
+  it('Error state and retry: shows error message with retry button when GET members fails', async () => {
+    const validFuture = Math.floor(Date.now() / 1000) + 3600;
+    setToken(createJwt({ sub: OWNER_USER_ID, exp: validFuture }));
+    setStoredUser({ id: OWNER_USER_ID, name: 'Alice Owner', email: 'alice@example.com' });
+
+    server.use(
+      http.get('*/api/projects/:id/members', () => {
+        return HttpResponse.json({ message: 'Database connection failed' }, { status: 500 });
+      })
+    );
+
+    renderTeamPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('members-error')).toBeInTheDocument();
+      expect(screen.getByText(/Failed to load team members/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    });
+  });
+
+  it('Invite error with errorId: displays "An unexpected error occurred (ref <errorId>)" on 500', async () => {
+    const validFuture = Math.floor(Date.now() / 1000) + 3600;
+    setToken(createJwt({ sub: OWNER_USER_ID, exp: validFuture }));
+    setStoredUser({ id: OWNER_USER_ID, name: 'Alice Owner', email: 'alice@example.com' });
+
+    server.use(
+      http.post('*/api/projects/:id/members', () => {
+        return HttpResponse.json(
+          { message: 'An unexpected error occurred', errorId: 'a1b2c3d4' },
+          { status: 500 }
+        );
+      })
+    );
+
+    renderTeamPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Owner')).toBeInTheDocument();
+    });
+
+    const user = userEvent.setup();
+    const emailInput = screen.getByLabelText(/email address/i);
+    const inviteButton = screen.getByRole('button', { name: /invite/i });
+
+    await user.type(emailInput, 'fail@example.com');
+    await user.click(inviteButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('invite-error')).toHaveTextContent('An unexpected error occurred (ref a1b2c3d4)');
+    });
+  });
 });

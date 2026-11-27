@@ -3,10 +3,12 @@ import { useParams, useOutletContext } from 'react-router-dom';
 import { ShieldAlert, Loader2, FileSpreadsheet } from 'lucide-react';
 import { useReport } from '../hooks/useDashboard';
 import { useCurrentMembership } from '../hooks/useMembers';
+import { useAuth } from '../context/AuthContext';
 import { ReportTable } from '../components/dashboard/ReportTable';
 import { Project } from '../types/project';
 
 export const ReportPage: React.FC = () => {
+  const { user } = useAuth();
   const { projectId: routeProjectId, id: routeId } = useParams<{
     projectId?: string;
     id?: string;
@@ -20,7 +22,12 @@ export const ReportPage: React.FC = () => {
     outletContext = null;
   }
 
-  const { isOwner, isLoading: isCheckingMembership } = useCurrentMembership(projectId);
+  const { isOwner: isMemberOwner, isLoading: isCheckingMembership } = useCurrentMembership(projectId);
+  const isOwner = Boolean(
+    isMemberOwner ||
+    outletContext?.project?.role === 'Owner' ||
+    (user?.id && outletContext?.project?.ownerId === user.id)
+  );
   const { data: report, isLoading: isLoadingReport, error } = useReport(projectId, isOwner);
 
   // Check for 403 Forbidden either from backend error response or non-owner membership

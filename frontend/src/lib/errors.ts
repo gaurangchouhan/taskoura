@@ -45,14 +45,26 @@ export function getErrorMessage(err: unknown): string {
 
     if (typeof data === 'object' && data !== null) {
       const dataObj = data as Record<string, unknown>;
+      const errorId = dataObj.errorId || dataObj.ref;
       if (typeof dataObj.message === 'string' && dataObj.message.trim()) {
-        return dataObj.message.trim();
+        const msg = dataObj.message.trim();
+        if (errorId && (msg === 'An unexpected error occurred' || axErr.response?.status === 500)) {
+          return `An unexpected error occurred (ref ${errorId})`;
+        }
+        return msg;
       }
       if (typeof dataObj.error === 'string' && dataObj.error.trim()) {
-        return dataObj.error.trim();
+        const errStr = dataObj.error.trim();
+        if (errorId && (errStr === 'Internal Server Error' || axErr.response?.status === 500)) {
+          return `An unexpected error occurred (ref ${errorId})`;
+        }
+        return errStr;
       }
       if (typeof dataObj.detail === 'string' && dataObj.detail.trim()) {
         return dataObj.detail.trim();
+      }
+      if (errorId && axErr.response?.status === 500) {
+        return `An unexpected error occurred (ref ${errorId})`;
       }
     }
 
