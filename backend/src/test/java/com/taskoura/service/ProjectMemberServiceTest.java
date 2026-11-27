@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -41,6 +42,9 @@ class ProjectMemberServiceTest {
 
     @Mock
     private NotificationService notificationService;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private ProjectMemberService projectMemberService;
@@ -68,7 +72,7 @@ class ProjectMemberServiceTest {
                 .build();
 
         when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(sampleProject);
-        when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(sampleUser));
+        when(userRepository.findByEmailIgnoreCase("jane@example.com")).thenReturn(Optional.of(sampleUser));
         when(projectMemberRepository.existsByProjectIdAndUserId(projectId, sampleUser.getId())).thenReturn(false);
         when(projectMemberRepository.save(any(ProjectMember.class))).thenReturn(savedMember);
 
@@ -87,11 +91,12 @@ class ProjectMemberServiceTest {
         InviteMemberRequest request = new InviteMemberRequest("nonexistent@example.com", "Member");
 
         when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(sampleProject);
+        when(userRepository.findByEmailIgnoreCase("nonexistent@example.com")).thenReturn(Optional.empty());
         when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(projectId, request))
                 .isInstanceOf(NotFoundException.class)
-                .hasMessage("User with this email not found");
+                .hasMessage("No user found with this email");
 
         verify(projectMemberRepository, never()).save(any());
     }
@@ -102,7 +107,7 @@ class ProjectMemberServiceTest {
         InviteMemberRequest request = new InviteMemberRequest("jane@example.com", "Member");
 
         when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(sampleProject);
-        when(userRepository.findByEmail("jane@example.com")).thenReturn(Optional.of(sampleUser));
+        when(userRepository.findByEmailIgnoreCase("jane@example.com")).thenReturn(Optional.of(sampleUser));
         when(projectMemberRepository.existsByProjectIdAndUserId(projectId, sampleUser.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> projectMemberService.inviteMember(projectId, request))
@@ -110,6 +115,49 @@ class ProjectMemberServiceTest {
                 .hasMessage("User is already a member of this project");
 
         verify(projectMemberRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("inviteMember: succeeds even when email service throws")
+    void inviteMember_emailServiceThrows_stillSucceeds() {
+        InviteMemberRequest request = new InviteMemberRequest("jane@example.com", "Member");
+        ProjectMember savedMember = ProjectMember.builder()
+                .id(UUID.randomUUID())
+                .project(sampleProject)
+                .user(sampleUser)
+                .role("Member")
+                .build();
+
+        when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(sampleProject);
+        when(userRepository.findByEmailIgnoreCase("jane@example.com")).thenReturn(Optional.of(sampleUser));
+        when(projectMemberRepository.existsByProjectIdAndUserId(projectId, sampleUser.getId())).thenReturn(false);
+        when(projectMemberRepository.save(any(ProjectMember.class))).thenReturn(savedMember);
+        doThrow(new RuntimeException("SMTP connect failed")).when(emailService).sendProjectInviteEmail(any(), any(), any(), any(), any());
+
+        ProjectMemberResponse response = projectMemberService.inviteMember(projectId, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.userEmail()).isEqualTo("jane@example.com");
+        verify(projectMemberRepository).save(any(ProjectMember.class));
+    }
+
+    @Test
+    @DisplayName("getMembers: always includes project owner even when no ProjectMember row exists")
+    void getMembers_ownerAlwaysPresentWhenNoMemberRow() {
+        User owner = User.builder().id(UUID.randomUUID()).name("Owner User").email("owner@example.com").build();
+        Project projectWithOwner = Project.builder().id(projectId).name("Sample Project").owner(owner).build();
+
+        when(projectService.getProjectEntityOrThrow(projectId)).thenReturn(projectWithOwner);
+        when(projectMemberRepository.findByProjectId(projectId)).thenReturn(new ArrayList<>());
+        when(projectMemberRepository.save(any(ProjectMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<ProjectMemberResponse> responses = projectMemberService.getMembers(projectId);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).role()).isEqualTo("Owner");
+        assertThat(responses.get(0).userEmail()).isEqualTo("owner@example.com");
+        assertThat(responses.get(0).userName()).isEqualTo("Owner User");
+        verify(projectMemberRepository).save(any(ProjectMember.class));
     }
 
     @Test

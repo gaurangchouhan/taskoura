@@ -268,7 +268,7 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("Unexpected exception produces 500 INTERNAL with generic message and no stack trace in response")
+    @DisplayName("Unexpected exception produces 500 INTERNAL with generic message, errorId, and no stack trace in response")
     void testUnexpected_producesInternalWithoutStackTrace() throws Exception {
         mockMvc.perform(get("/api/test/internal-error"))
                 .andExpect(status().isInternalServerError())
@@ -276,6 +276,7 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.error").value("Internal Server Error"))
                 .andExpect(jsonPath("$.code").value("INTERNAL"))
                 .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
+                .andExpect(jsonPath("$.errorId").exists())
                 .andExpect(jsonPath("$.message").value(not("Null pointer in secret DB query")))
                 .andExpect(jsonPath("$.stackTrace").doesNotExist())
                 .andExpect(jsonPath("$.trace").doesNotExist())

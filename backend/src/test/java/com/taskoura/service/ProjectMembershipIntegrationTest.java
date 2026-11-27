@@ -105,7 +105,7 @@ class ProjectMembershipIntegrationTest {
         InviteMemberRequest unknownInvite = new InviteMemberRequest("ghost@example.com", "Member");
         assertThatThrownBy(() -> projectMemberService.inviteMember(project.id(), unknownInvite))
                 .isInstanceOf(NotFoundException.class)
-                .hasMessage("User with this email not found");
+                .hasMessage("No user found with this email");
 
         // 4. Invite the same user twice -> throws ConflictException
         assertThatThrownBy(() -> projectMemberService.inviteMember(project.id(), inviteRequest))

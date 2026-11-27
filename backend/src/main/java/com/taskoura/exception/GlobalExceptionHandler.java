@@ -218,9 +218,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception e, HttpServletRequest request) {
-        log.error("Unhandled exception processing request to {}", request != null ? request.getRequestURI() : "unknown", e);
+        String errorId = java.util.UUID.randomUUID().toString().substring(0, 8);
+        log.error("[errorId={}] Unhandled exception processing request to {}: {}", errorId, request != null ? request.getRequestURI() : "unknown", e.getMessage(), e);
+        Map<String, Object> body = buildBody(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL", "An unexpected error occurred", request, null);
+        body.put("errorId", errorId);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(buildBody(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL", "An unexpected error occurred", request, null));
+                .body(body);
     }
 
     private String resolveCode(HttpStatus status) {

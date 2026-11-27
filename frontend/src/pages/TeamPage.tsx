@@ -1,12 +1,13 @@
 import React from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Users, Shield, UserCheck } from 'lucide-react';
+import { Users, Shield, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import { useMembers, useCurrentMembership, useUpdateRole, useRemoveMember } from '../hooks/useMembers';
 import { useAuth } from '../context/AuthContext';
 import { InviteMemberForm } from '../components/members/InviteMemberForm';
 import { MemberRow } from '../components/members/MemberRow';
 import { Project } from '../types/project';
+import { getErrorMessage } from '../lib/errors';
 
 export const TeamPage: React.FC = () => {
   const { projectId: rawProjectId, id: rawId } = useParams<{ projectId?: string; id?: string }>();
@@ -14,7 +15,13 @@ export const TeamPage: React.FC = () => {
   const projectId = rawProjectId || rawId || outletContext?.project?.id || '';
 
   const { user } = useAuth();
-  const { data: members = [], isLoading: isMembersLoading } = useMembers(projectId);
+  const {
+    data: members = [],
+    isLoading: isMembersLoading,
+    isError: isMembersError,
+    error: membersError,
+    refetch: refetchMembers,
+  } = useMembers(projectId);
   const { isOwner } = useCurrentMembership(projectId);
 
   const { mutateAsync: updateRole } = useUpdateRole(projectId);
@@ -108,8 +115,28 @@ export const TeamPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Member Rows */}
-        {members.length === 0 ? (
+        {/* Member Rows / Error State */}
+        {isMembersError ? (
+          <div className="p-12 text-center space-y-3" data-testid="members-error">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-500 mx-auto flex items-center justify-center border border-rose-100">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Failed to load team members</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {getErrorMessage(membersError) || 'Could not retrieve project members. Please check connection and try again.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => refetchMembers()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          </div>
+        ) : members.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-sm text-slate-500">No members found in this project.</p>
           </div>

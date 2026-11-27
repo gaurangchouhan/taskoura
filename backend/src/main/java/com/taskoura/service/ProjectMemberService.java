@@ -8,16 +8,24 @@ import com.taskoura.exception.ConflictException;
 import com.taskoura.exception.NotFoundException;
 import com.taskoura.repository.ProjectMemberRepository;
 import com.taskoura.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class ProjectMemberService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProjectMemberService.class);
 
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
@@ -49,7 +57,7 @@ public class ProjectMemberService {
         String email = request.email() != null ? request.email().trim() : "";
         User user = userRepository.findByEmailIgnoreCase(email)
                 .or(() -> userRepository.findByEmail(email))
-                .orElseThrow(() -> new NotFoundException("User with this email not found"));
+                .orElseThrow(() -> new NotFoundException("No user found with this email"));
 
         if (projectMemberRepository.existsByProjectIdAndUserId(projectId, user.getId())) {
             throw new ConflictException("User is already a member of this project");
@@ -62,68 +70,109 @@ public class ProjectMemberService {
                 .build();
 
         ProjectMember saved = projectMemberRepository.save(member);
+        ProjectMemberResponse response = toResponse(saved);
 
-        // Safe activity log & notification (non-blocking)
+        // Schedule notification and email AFTER transaction commits (best-effort)
+        Runnable postCommitAction = () -> dispatchPostInviteActions(project, user, saved.getRole());
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    postCommitAction.run();
+                }
+            });
+        } else {
+            postCommitAction.run();
+        }
+
+        return response;
+    }
+
+    private void dispatchPostInviteActions(Project project, User user, String role) {
+        // Notification & activity log: best effort
         try {
             String userName = user.getName() != null && !user.getName().isBlank() ? user.getName().trim() : user.getEmail();
             String projName = project.getName() != null ? project.getName() : "Project";
-            String desc = userName + " was invited to project \"" + projName + "\" as " + saved.getRole();
+            String desc = userName + " was invited to project \"" + projName + "\" as " + role;
             if (desc.length() > 250) {
                 desc = desc.substring(0, 247) + "...";
             }
             notificationService.logActivity(project, user, "MEMBER_INVITED", desc);
 
-            String notifMsg = "You have been invited to project \"" + projName + "\" as " + saved.getRole();
+            String notifMsg = "You have been invited to project \"" + projName + "\" as " + role;
             if (notifMsg.length() > 250) {
                 notifMsg = notifMsg.substring(0, 247) + "...";
             }
             notificationService.createNotification(user, notifMsg);
         } catch (Exception e) {
-            // Log but don't fail member addition
+            log.error("Failed to record invite notification/activity log: {}", e.getMessage());
         }
 
+        // Email notification: best effort, logged without secrets
         if (emailService != null) {
             try {
                 String inviterName = "Team Lead";
                 if (project.getOwner() != null && project.getOwner().getName() != null && !project.getOwner().getName().isBlank()) {
                     inviterName = project.getOwner().getName().trim();
                 }
-                emailService.sendProjectInviteEmail(user, inviterName, project.getName(), project.getId(), saved.getRole());
-            } catch (Exception ignored) {
+                emailService.sendProjectInviteEmail(user, inviterName, project.getName(), project.getId(), role);
+            } catch (Exception e) {
+                log.error("Failed to deliver project invite email: {}", e.getMessage());
             }
         }
-
-        return toResponse(saved);
     }
 
     public List<ProjectMemberResponse> getMembers(UUID projectId) {
-        // Ensure project exists or throws NotFoundException
         Project project = projectService.getProjectEntityOrThrow(projectId);
 
         List<ProjectMember> members = projectMemberRepository.findByProjectId(projectId);
 
-        // Auto-heal: Ensure project owner is recorded as a ProjectMember with role Owner
+        boolean ownerFound = false;
         if (project.getOwner() != null) {
-            boolean ownerPresent = members.stream()
+            ownerFound = members.stream()
                     .anyMatch(m -> m.getUser() != null && m.getUser().getId().equals(project.getOwner().getId()));
-            if (!ownerPresent) {
+
+            if (!ownerFound) {
+                // Auto-heal in database if missing
                 ProjectMember ownerMember = ProjectMember.builder()
                         .project(project)
                         .user(project.getOwner())
                         .role("Owner")
                         .build();
                 try {
-                    ownerMember = projectMemberRepository.save(ownerMember);
-                } catch (Exception ignored) {
+                    ProjectMember saved = projectMemberRepository.save(ownerMember);
+                    if (saved != null) {
+                        ownerMember = saved;
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to persist auto-healed owner membership: {}", e.getMessage());
                 }
-                members = new java.util.ArrayList<>(members);
+                members = new ArrayList<>(members);
                 members.add(0, ownerMember);
+                ownerFound = true;
             }
         }
 
-        return members.stream()
+        List<ProjectMemberResponse> responses = new ArrayList<>(members.stream()
+                .filter(Objects::nonNull)
                 .map(this::toResponse)
-                .toList();
+                .filter(Objects::nonNull)
+                .toList());
+
+        // Fail-safe: If the project has an owner and for any reason responses does not contain Owner,
+        // ALWAYS prepend an Owner response so the members list ALWAYS includes the project owner!
+        if (project.getOwner() != null && responses.stream().noneMatch(r -> r.userId().equals(project.getOwner().getId()))) {
+            responses.add(0, new ProjectMemberResponse(
+                    UUID.randomUUID(),
+                    project.getOwner().getId(),
+                    project.getOwner().getName(),
+                    project.getOwner().getEmail(),
+                    "Owner",
+                    null
+            ));
+        }
+
+        return responses;
     }
 
     public ProjectMemberResponse updateRole(UUID projectId, UUID userId, UpdateRoleRequest request) {

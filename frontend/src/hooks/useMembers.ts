@@ -71,7 +71,7 @@ export const useCurrentMembership = (projectId?: string): CurrentMembershipResul
 
   const isOwner = membership
     ? membership.role === 'Owner'
-    : (members.length === 0 && Boolean((user?.id && project?.ownerId === user?.id) || project?.role === 'Owner'));
+    : Boolean((user?.id && project?.ownerId === user?.id) || project?.role === 'Owner');
 
   return {
     membership,
